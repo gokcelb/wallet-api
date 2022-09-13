@@ -1,9 +1,9 @@
 package wallet
 
 type Wallet struct {
-	id                    string
-	userId                string
-	balance               float64
-	balanceUpperLimit     float64
-	transactionUpperLimit float64
+	Id                    string
+	UserId                string
+	Balance               float64
+	BalanceUpperLimit     float64
+	TransactionUpperLimit float64
 }

@@ -1,6 +1,13 @@
 package wallet
 
-import "github.com/labstack/echo/v4"
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+)
+
+var ErrWalletNotFound = fmt.Errorf("no wallet with the given id exists")
 
 // should these functions return the value or the reference of Wallet?
 type Service interface {
@@ -44,7 +51,12 @@ func (h *Handler) CreateWallet(c echo.Context) error {
 }
 
 func (h *Handler) GetWallet(c echo.Context) error {
-	return nil
+	wallet, err := h.svc.Get(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, ErrWalletNotFound)
+	}
+
+	return c.JSON(http.StatusOK, wallet)
 }
 
 func (h *Handler) DeleteWallet(c echo.Context) error {
