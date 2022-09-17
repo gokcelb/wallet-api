@@ -1,0 +1,16 @@
+{
+    "mongo": {
+        "uri": "mongodb://localhost:27017",
+        "database": "wallet-api",
+        "collection": "wallets"
+    },
+    "wallet": {
+        "initialBalance": 0,
+        "maxBalance": 10000,
+        "minBalance": 0
+    },
+    "transaction": {
+        "maxAmount": 5000,
+        "minAmount": 10
+    }
+}
