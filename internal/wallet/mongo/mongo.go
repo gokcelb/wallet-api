@@ -36,28 +36,26 @@ func (m *Mongo) Read(ctx context.Context, id string) (wallet.Wallet, error) {
 		return wallet.Wallet{}, err
 	}
 
-	result := m.collection.FindOne(ctx, primitive.M{"_id": objectId})
-	if err := result.Err(); errors.Is(err, mongo.ErrNoDocuments) {
+	var mongoWallet mongoWallet
+	err = m.collection.FindOne(ctx, primitive.M{"_id": objectId}).Decode(&mongoWallet)
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return wallet.Wallet{}, wallet.ErrWalletNotFound
 	} else if err != nil {
 		return wallet.Wallet{}, err
 	}
 
-	var mongoWallet mongoWallet
-	result.Decode(&mongoWallet)
 	return *newWalletFromMongoWallet(&mongoWallet), nil
 }
 
 func (m *Mongo) ReadByUserId(ctx context.Context, userId string) (wallet.Wallet, error) {
-	result := m.collection.FindOne(ctx, primitive.M{"user_id": userId})
-	if err := result.Err(); errors.Is(err, mongo.ErrNoDocuments) {
+	var mongoWallet mongoWallet
+	err := m.collection.FindOne(ctx, primitive.M{"user_id": userId}).Decode(&mongoWallet)
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return wallet.Wallet{}, wallet.ErrWalletNotFound
 	} else if err != nil {
 		return wallet.Wallet{}, err
 	}
 
-	var mongoWallet mongoWallet
-	result.Decode(&mongoWallet)
 	return *newWalletFromMongoWallet(&mongoWallet), nil
 }
 

@@ -186,11 +186,3 @@ func TestServiceGetWallet(t *testing.T) {
 		})
 	}
 }
-
-func returnsNativeServiceError(err error) bool {
-	return wallet.ContainsError(err, []error{
-		wallet.ErrAboveMaximumBalanceLimit,
-		wallet.ErrAboveMaximumTransactionLimit,
-		wallet.ErrBelowMinimumTransactionLimit,
-	})
-}

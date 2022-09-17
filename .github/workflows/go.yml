@@ -1,0 +1,55 @@
+name: Go
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+          cache: true
+          check-latest: true
+
+      - name: Build
+        run: go build -v ./...
+
+  code-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+          cache: true
+          check-latest: true
+
+      - name: Run Coverage
+        run: |
+          export COVERAGE_THRESHOLD=80
+          go test -race -coverprofile=coverage.out -covermode=atomic ./...
+          coverage=$(go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
+          if [ 1 -eq "$(echo "${coverage} < ${COVERAGE_THRESHOLD}" | bc)" ]
+          then
+            echo "Insufficient test coverage, threshold=${COVERAGE_THRESHOLD}, coverage= ${coverage}"
+            exit 1
+          fi
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Golang Linter
+        uses: golangci/golangci-lint-action@v3.1.0
+        with:
+          version: v1.43
