@@ -2,6 +2,7 @@ package wallet_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/gokcelb/wallet-api/config"
@@ -99,59 +100,59 @@ func TestServiceCreateWallet(t *testing.T) {
 	}
 }
 
-// func TestServiceGet(t *testing.T) {
-// 	validWalletId := "1"
-// 	invalidWalletId := "2"
-// 	mockWallet := wallet.Wallet{
-// 		Id:                    validWalletId,
-// 		UserId:                "1",
-// 		Balance:               0,
-// 		BalanceUpperLimit:     100,
-// 		TransactionUpperLimit: 100,
-// 	}
+func TestServiceGet(t *testing.T) {
+	validWalletId := "1"
+	invalidWalletId := "2"
+	mockWallet := wallet.Wallet{
+		Id:                    validWalletId,
+		UserId:                "1",
+		Balance:               0,
+		BalanceUpperLimit:     1000,
+		TransactionUpperLimit: 100,
+	}
 
-// 	mockRepository := createMockRepository(t)
-// 	s := wallet.NewService(mockRepository, getConf())
+	mockRepository := createMockRepository(t)
+	s := wallet.NewService(mockRepository, getConf())
 
-// 	testCases := []struct {
-// 		desc           string
-// 		givenId        string
-// 		mockRepoWallet wallet.Wallet
-// 		mockRepoError  error
-// 		expectedWallet wallet.Wallet
-// 		expectedError  error
-// 	}{
-// 		{
-// 			desc:           "wallet exists, return wallet",
-// 			givenId:        validWalletId,
-// 			mockRepoWallet: mockWallet,
-// 			mockRepoError:  nil,
-// 			expectedWallet: mockWallet,
-// 			expectedError:  nil,
-// 		},
-// 		{
-// 			desc:           "wallet does not exist, return error",
-// 			givenId:        invalidWalletId,
-// 			mockRepoWallet: wallet.Wallet{},
-// 			mockRepoError:  errors.New(""),
-// 			expectedWallet: wallet.Wallet{},
-// 			expectedError:  wallet.ErrWalletNotFound,
-// 		},
-// 	}
-// 	for _, tC := range testCases {
-// 		t.Run(tC.desc, func(t *testing.T) {
-// 			mockRepository.
-// 				EXPECT().
-// 				Read(context.TODO(), tC.givenId).
-// 				Return(tC.mockRepoWallet, tC.mockRepoError)
+	testCases := []struct {
+		desc           string
+		givenId        string
+		mockRepoWallet wallet.Wallet
+		mockRepoError  error
+		expectedWallet wallet.Wallet
+		expectedError  error
+	}{
+		{
+			desc:           "wallet exists, return wallet",
+			givenId:        validWalletId,
+			mockRepoWallet: mockWallet,
+			mockRepoError:  nil,
+			expectedWallet: mockWallet,
+			expectedError:  nil,
+		},
+		{
+			desc:           "wallet does not exist, return error",
+			givenId:        invalidWalletId,
+			mockRepoWallet: wallet.Wallet{},
+			mockRepoError:  errors.New(""),
+			expectedWallet: wallet.Wallet{},
+			expectedError:  wallet.ErrWalletNotFound,
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			mockRepository.
+				EXPECT().
+				Read(context.TODO(), tC.givenId).
+				Return(tC.mockRepoWallet, tC.mockRepoError)
 
-// 			wallet, err := s.GetWallet(context.TODO(), tC.givenId)
+			wallet, err := s.GetWallet(context.TODO(), tC.givenId)
 
-// 			assert.Equal(t, tC.expectedWallet, wallet)
-// 			assert.Equal(t, tC.expectedError, err)
-// 		})
-// 	}
-// }
+			assert.Equal(t, tC.expectedWallet, wallet)
+			assert.Equal(t, tC.expectedError, err)
+		})
+	}
+}
 
 func returnsNativeServiceError(err error) bool {
 	return wallet.ContainsError(err, []error{

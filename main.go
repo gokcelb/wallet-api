@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
@@ -36,8 +37,8 @@ func main() {
 	walletHandler.RegisterRoutes(e)
 
 	go func() {
-		if err := e.Start(":8000"); err != nil {
-			panic(err)
+		if err := e.Start(":8000"); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal("shutting down...")
 		}
 	}()
 

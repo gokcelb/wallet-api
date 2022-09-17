@@ -49,3 +49,18 @@ func (mr *MockRepositoryMockRecorder) Create(ctx, wallet interface{}) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, wallet)
 }
+
+// Read mocks base method.
+func (m *MockRepository) Read(ctx context.Context, id string) (wallet.Wallet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Read", ctx, id)
+	ret0, _ := ret[0].(wallet.Wallet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Read indicates an expected call of Read.
+func (mr *MockRepositoryMockRecorder) Read(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockRepository)(nil).Read), ctx, id)
+}

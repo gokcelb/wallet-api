@@ -15,7 +15,7 @@ var badRequestErrors = []error{
 
 type Service interface {
 	CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error)
-	// GetWallet(ctx context.Context, id string) (Wallet, error)
+	GetWallet(ctx context.Context, id string) (Wallet, error)
 	// DeleteWallet(ctx context.Context, id string) error
 }
 
@@ -41,7 +41,7 @@ func NewHandler(svc Service) *handler {
 
 func (h *handler) RegisterRoutes(e *echo.Echo) {
 	e.POST("/wallets", h.CreateWallet)
-	// e.GET("/wallets/:id", h.GetWallet)
+	e.GET("/wallets/:id", h.GetWallet)
 	// e.DELETE("/wallets/:id", h.DeleteWallet)
 
 	e.POST("/wallets/:id/transactions", h.CreateTransaction)
@@ -67,17 +67,17 @@ func (h *handler) CreateWallet(c echo.Context) error {
 	return c.JSON(http.StatusCreated, wallet)
 }
 
-// // 200 => successfully read
-// // 404 => wallet with given id may not exist
-// // 500 => any other error
-// func (h *handler) GetWallet(c echo.Context) error {
-// 	wallet, err := h.svc.GetWallet(c.Request().Context(), c.Param("id"))
-// 	if err != nil && err == ErrWalletNotFound {
-// 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
-// 	}
+// 200 => successfully read
+// 404 => wallet with given id may not exist
+// 500 => any other error
+func (h *handler) GetWallet(c echo.Context) error {
+	wallet, err := h.svc.GetWallet(c.Request().Context(), c.Param("id"))
+	if err != nil && err == ErrWalletNotFound {
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+	}
 
-// 	return c.JSON(http.StatusOK, wallet)
-// }
+	return c.JSON(http.StatusOK, wallet)
+}
 
 // // 204 => successfully deleted
 // // 404 => wallet with given id may not exist

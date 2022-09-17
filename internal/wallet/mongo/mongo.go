@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 
 	"github.com/gokcelb/wallet-api/internal/wallet"
 	"github.com/labstack/gommon/log"
@@ -28,6 +29,25 @@ func (m *Mongo) Create(ctx context.Context, wallet wallet.Wallet) (string, error
 	return result.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
+func (m *Mongo) Read(ctx context.Context, id string) (wallet.Wallet, error) {
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Error(err)
+		return wallet.Wallet{}, err
+	}
+
+	res := m.collection.FindOne(ctx, primitive.M{"_id": objectId})
+	if err := res.Err(); errors.Is(err, mongo.ErrNoDocuments) {
+		return wallet.Wallet{}, wallet.ErrWalletNotFound
+	} else if err != nil {
+		return wallet.Wallet{}, err
+	}
+
+	var mongoWallet mongoWallet
+	res.Decode(&mongoWallet)
+	return *newWalletFromMongoWallet(&mongoWallet), nil
+}
+
 func newMongoWalletFromWallet(wallet wallet.Wallet) *mongoWallet {
 	return &mongoWallet{
 		Id:                    primitive.NewObjectID(),
@@ -35,5 +55,15 @@ func newMongoWalletFromWallet(wallet wallet.Wallet) *mongoWallet {
 		Balance:               wallet.Balance,
 		BalanceUpperLimit:     wallet.BalanceUpperLimit,
 		TransactionUpperLimit: wallet.TransactionUpperLimit,
+	}
+}
+
+func newWalletFromMongoWallet(mongoWallet *mongoWallet) *wallet.Wallet {
+	return &wallet.Wallet{
+		Id:                    mongoWallet.Id.Hex(),
+		UserId:                mongoWallet.UserId,
+		Balance:               mongoWallet.Balance,
+		BalanceUpperLimit:     mongoWallet.BalanceUpperLimit,
+		TransactionUpperLimit: mongoWallet.TransactionUpperLimit,
 	}
 }

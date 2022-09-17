@@ -16,7 +16,7 @@ var (
 
 type Repository interface {
 	Create(ctx context.Context, wallet Wallet) (string, error)
-	// Read(ctx context.Context, id string) (Wallet, error)
+	Read(ctx context.Context, id string) (Wallet, error)
 	// Delete(ctx context.Context, id string) error
 }
 
@@ -54,14 +54,14 @@ func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (W
 	return wallet, nil
 }
 
-// func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
-// 	wallet, err := s.repo.Read(ctx, id)
-// 	if err != nil {
-// 		return Wallet{}, ErrWalletNotFound
-// 	}
+func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
+	wallet, err := s.repo.Read(ctx, id)
+	if err != nil {
+		return Wallet{}, ErrWalletNotFound
+	}
 
-// 	return wallet, nil
-// }
+	return wallet, nil
+}
 
 func (s *service) Delete(id string) error {
 	return nil
