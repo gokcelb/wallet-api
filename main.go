@@ -50,8 +50,6 @@ func main() {
 	if err := e.Shutdown(ctx); err != nil {
 		e.Logger.Fatal(err)
 	}
-
-	log.Info("system is shutting down...")
 }
 
 func connectToMongo(ctx context.Context, conf config.Conf) *mongo.Client {

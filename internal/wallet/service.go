@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrWalletNotFound               = fmt.Errorf("no wallet with the given id exists")
+	ErrWalletWithUserIdExists       = fmt.Errorf("wallet with user id already exists")
 	ErrAboveMaximumBalanceLimit     = fmt.Errorf("wallet balance is above maximum balance limit")
 	ErrAboveMaximumTransactionLimit = fmt.Errorf("transaction is above maximum transaction limit")
 	ErrBelowMinimumTransactionLimit = fmt.Errorf("transaction is below minimum transaction limit")
@@ -17,6 +18,7 @@ var (
 type Repository interface {
 	Create(ctx context.Context, wallet Wallet) (string, error)
 	Read(ctx context.Context, id string) (Wallet, error)
+	ReadByUserId(ctx context.Context, userId string) (Wallet, error)
 	// Delete(ctx context.Context, id string) error
 }
 
@@ -36,6 +38,10 @@ func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (W
 
 	if info.TransactionUpperLimit > s.conf.Transaction.MaxAmount {
 		return Wallet{}, ErrAboveMaximumTransactionLimit
+	}
+
+	if s.checkIfWalletWithUserIdExists(ctx, info.UserId) {
+		return Wallet{}, ErrWalletWithUserIdExists
 	}
 
 	wallet := Wallet{
@@ -61,6 +67,11 @@ func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
 	}
 
 	return wallet, nil
+}
+
+func (s *service) checkIfWalletWithUserIdExists(ctx context.Context, userId string) bool {
+	wallet, err := s.repo.ReadByUserId(ctx, userId)
+	return wallet != (Wallet{}) && err == nil
 }
 
 func (s *service) Delete(id string) error {

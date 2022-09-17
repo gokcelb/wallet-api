@@ -86,6 +86,16 @@ func TestHandlerPostWallet(t *testing.T) {
 			expectedStatusCode:         400,
 			expectedResponseBody:       testHandlerErr{wallet.ErrAboveMaximumTransactionLimit.Error()},
 		},
+		{
+			desc:                       "wallet with user id already exists, return error",
+			givenUserId:                "1",
+			givenBalanceUpperLimit:     3000,
+			givenTransactionUpperLimit: 1000,
+			mockSvcWallet:              wallet.Wallet{},
+			mockSvcError:               wallet.ErrWalletWithUserIdExists,
+			expectedStatusCode:         400,
+			expectedResponseBody:       testHandlerErr{wallet.ErrWalletWithUserIdExists.Error()},
+		},
 	}
 
 	for _, tC := range testCases {

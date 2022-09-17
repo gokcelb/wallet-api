@@ -25,43 +25,55 @@ func getConf() config.Conf {
 	return conf
 }
 
-func TestServiceCreateWallet(t *testing.T) {
+func TestServiceCreateWalletWithValidWalletCreationInfo(t *testing.T) {
+	mockRepository := createMockRepository(t)
+	s := wallet.NewService(mockRepository, getConf())
+
+	walletCreationInfo := wallet.WalletCreationInfo{
+		UserId:                "1",
+		BalanceUpperLimit:     1000,
+		TransactionUpperLimit: 100,
+	}
+	convertedWallet := wallet.Wallet{
+		UserId:                "1",
+		Balance:               0,
+		BalanceUpperLimit:     1000,
+		TransactionUpperLimit: 100,
+	}
+	expectedWallet := wallet.Wallet{
+		Id:                    "1",
+		UserId:                "1",
+		Balance:               0,
+		BalanceUpperLimit:     1000,
+		TransactionUpperLimit: 100,
+	}
+
+	mockRepository.
+		EXPECT().
+		ReadByUserId(context.TODO(), walletCreationInfo.UserId).
+		Return(wallet.Wallet{}, nil)
+
+	mockRepository.
+		EXPECT().
+		Create(context.TODO(), convertedWallet).
+		Return(expectedWallet.Id, nil)
+
+	result, err := s.CreateWallet(context.TODO(), &walletCreationInfo)
+
+	assert.Equal(t, expectedWallet, result)
+	assert.Nil(t, err)
+}
+
+func TestServiceCreateWalletWithInvalidLimit(t *testing.T) {
 	mockRepository := createMockRepository(t)
 	s := wallet.NewService(mockRepository, getConf())
 
 	testCases := []struct {
 		desc                    string
 		givenWalletCreationInfo wallet.WalletCreationInfo
-		convertedWallet         wallet.Wallet
-		mockRepoWalletId        string
-		mockRepoErr             error
 		expectedWallet          wallet.Wallet
 		expectedErr             error
 	}{
-		{
-			desc: "wallet creation info is valid, return wallet",
-			givenWalletCreationInfo: wallet.WalletCreationInfo{
-				UserId:                "1",
-				BalanceUpperLimit:     1000,
-				TransactionUpperLimit: 100,
-			},
-			convertedWallet: wallet.Wallet{
-				UserId:                "1",
-				Balance:               0,
-				BalanceUpperLimit:     1000,
-				TransactionUpperLimit: 100,
-			},
-			mockRepoWalletId: "1",
-			mockRepoErr:      nil,
-			expectedWallet: wallet.Wallet{
-				Id:                    "1",
-				UserId:                "1",
-				Balance:               0,
-				BalanceUpperLimit:     1000,
-				TransactionUpperLimit: 100,
-			},
-			expectedErr: nil,
-		},
 		{
 			desc: "balance upper limit is not valid, return error",
 			givenWalletCreationInfo: wallet.WalletCreationInfo{
@@ -85,13 +97,6 @@ func TestServiceCreateWallet(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			if !returnsNativeServiceError(tC.expectedErr) {
-				mockRepository.
-					EXPECT().
-					Create(context.TODO(), tC.convertedWallet).
-					Return(tC.mockRepoWalletId, tC.mockRepoErr)
-			}
-
 			wallet, err := s.CreateWallet(context.TODO(), &tC.givenWalletCreationInfo)
 
 			assert.Equal(t, tC.expectedWallet, wallet)
@@ -100,7 +105,35 @@ func TestServiceCreateWallet(t *testing.T) {
 	}
 }
 
-func TestServiceGet(t *testing.T) {
+func TestServiceCreateWalletWithExistingUserId(t *testing.T) {
+	mockRepository := createMockRepository(t)
+	s := wallet.NewService(mockRepository, getConf())
+
+	givenWalletCreationInfo := wallet.WalletCreationInfo{
+		UserId:                "1",
+		BalanceUpperLimit:     10000,
+		TransactionUpperLimit: 1000,
+	}
+	existingWallet := wallet.Wallet{
+		Id:                    "1",
+		UserId:                "1",
+		Balance:               0,
+		BalanceUpperLimit:     10000,
+		TransactionUpperLimit: 1000,
+	}
+
+	mockRepository.
+		EXPECT().
+		ReadByUserId(context.TODO(), givenWalletCreationInfo.UserId).
+		Return(existingWallet, nil)
+
+	result, err := s.CreateWallet(context.TODO(), &givenWalletCreationInfo)
+
+	assert.Equal(t, wallet.Wallet{}, result)
+	assert.Equal(t, wallet.ErrWalletWithUserIdExists, err)
+}
+
+func TestServiceGetWallet(t *testing.T) {
 	validWalletId := "1"
 	invalidWalletId := "2"
 	mockWallet := wallet.Wallet{

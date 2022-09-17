@@ -11,6 +11,7 @@ var badRequestErrors = []error{
 	ErrAboveMaximumBalanceLimit,
 	ErrAboveMaximumTransactionLimit,
 	ErrBelowMinimumTransactionLimit,
+	ErrWalletWithUserIdExists,
 }
 
 type Service interface {
