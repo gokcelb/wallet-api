@@ -1,22 +1,24 @@
 package wallet
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
 
-var ErrWalletNotFound = fmt.Errorf("no wallet with the given id exists")
+var badRequestErrors = []error{
+	ErrAboveMaximumBalanceLimit,
+	ErrAboveMaximumTransactionLimit,
+	ErrBelowMinimumTransactionLimit,
+}
 
-// should these functions return the value or the reference of Wallet?
 type Service interface {
 	Create(info *WalletCreationInfo) (Wallet, error)
 	Get(id string) (Wallet, error)
 	Delete(id string) error
 }
 
-type Handler struct {
+type handler struct {
 	svc Service
 }
 
@@ -32,11 +34,11 @@ type TransactionCreationInfo struct {
 	Amount          float64 `json:"amount"`
 }
 
-func New(svc Service) *Handler {
-	return &Handler{svc}
+func NewHandler(svc Service) *handler {
+	return &handler{svc}
 }
 
-func (h *Handler) RegisterRoutes(e *echo.Echo) {
+func (h *handler) RegisterRoutes(e *echo.Echo) {
 	e.POST("/wallets", h.CreateWallet)
 	e.GET("/wallets/:id", h.GetWallet)
 	e.DELETE("/wallets/:id", h.DeleteWallet)
@@ -46,31 +48,85 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 	e.GET("/wallets/:id/transactions/:transactionId", h.GetTransaction)
 }
 
-func (h *Handler) CreateWallet(c echo.Context) error {
-	return nil
+// 201 => successfully created
+// 400 => balanceUpperLimit and transactionUpperLimit may not be convertible to float
+// 400 => balanceUpperLimit and transactionUpperLimit may not meet config requirements
+// 500 => any other error
+func (h *handler) CreateWallet(c echo.Context) error {
+	var info WalletCreationInfo
+	if err := c.Bind(&info); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	wallet, err := h.svc.Create(&info)
+	if err != nil && isBadRequest(err) {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, wallet)
 }
 
-func (h *Handler) GetWallet(c echo.Context) error {
+// 200 => successfully read
+// 404 => wallet with given id may not exist
+// 500 => any other error
+func (h *handler) GetWallet(c echo.Context) error {
 	wallet, err := h.svc.Get(c.Param("id"))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, ErrWalletNotFound)
+	if err != nil && err == ErrWalletNotFound {
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, wallet)
 }
 
-func (h *Handler) DeleteWallet(c echo.Context) error {
+// 204 => successfully deleted
+// 404 => wallet with given id may not exist
+// 500 => any other error
+func (h *handler) DeleteWallet(c echo.Context) error {
+	err := h.svc.Delete(c.Param("id"))
+	if err != nil && err == ErrWalletNotFound {
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+	}
+
 	return nil
 }
 
-func (h *Handler) CreateTransaction(c echo.Context) error {
+// 201 => successfully created
+// 404 => wallet not found
+// 400 => type not valid
+// 400 => transaction amount does not meet config requirements
+// 500 => any other error
+func (h *handler) CreateTransaction(c echo.Context) error {
 	return nil
 }
 
-func (h *Handler) GetTransactions(c echo.Context) error {
+// 200 => successfully read
+// 404 => wallet not found
+// 500 => any other error
+// * they should be able to filter by type
+// * they should be able to paginate
+// 400 => type not valid
+// 400 => invalid pagination paramaters
+func (h *handler) GetTransactions(c echo.Context) error {
 	return nil
 }
 
-func (h *Handler) GetTransaction(c echo.Context) error {
+// 200 => successfully read
+// 404 => wallet or transaction not found
+// 500 => any other error
+func (h *handler) GetTransaction(c echo.Context) error {
 	return nil
+}
+
+func isBadRequest(err error) bool {
+	return ContainsError(err, badRequestErrors)
+}
+
+func ContainsError(err error, errList []error) bool {
+	for _, e := range errList {
+		if err == e {
+			return true
+		}
+	}
+
+	return false
 }
