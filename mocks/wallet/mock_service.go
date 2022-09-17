@@ -5,6 +5,7 @@
 package mock_wallet
 
 import (
+	context "context"
 	reflect "reflect"
 
 	wallet "github.com/gokcelb/wallet-api/internal/wallet"
@@ -34,46 +35,17 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
-// Create mocks base method.
-func (m *MockService) Create(info *wallet.WalletCreationInfo) (wallet.Wallet, error) {
+// CreateWallet mocks base method.
+func (m *MockService) CreateWallet(ctx context.Context, info *wallet.WalletCreationInfo) (wallet.Wallet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", info)
+	ret := m.ctrl.Call(m, "CreateWallet", ctx, info)
 	ret0, _ := ret[0].(wallet.Wallet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Create indicates an expected call of Create.
-func (mr *MockServiceMockRecorder) Create(info interface{}) *gomock.Call {
+// CreateWallet indicates an expected call of CreateWallet.
+func (mr *MockServiceMockRecorder) CreateWallet(ctx, info interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockService)(nil).Create), info)
-}
-
-// Delete mocks base method.
-func (m *MockService) Delete(id string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", id)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Delete indicates an expected call of Delete.
-func (mr *MockServiceMockRecorder) Delete(id interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockService)(nil).Delete), id)
-}
-
-// Get mocks base method.
-func (m *MockService) Get(id string) (wallet.Wallet, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", id)
-	ret0, _ := ret[0].(wallet.Wallet)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Get indicates an expected call of Get.
-func (mr *MockServiceMockRecorder) Get(id interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockService)(nil).Get), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWallet", reflect.TypeOf((*MockService)(nil).CreateWallet), ctx, info)
 }

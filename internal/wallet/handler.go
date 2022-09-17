@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -13,9 +14,9 @@ var badRequestErrors = []error{
 }
 
 type Service interface {
-	Create(info *WalletCreationInfo) (Wallet, error)
-	Get(id string) (Wallet, error)
-	Delete(id string) error
+	CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error)
+	// GetWallet(ctx context.Context, id string) (Wallet, error)
+	// DeleteWallet(ctx context.Context, id string) error
 }
 
 type handler struct {
@@ -40,8 +41,8 @@ func NewHandler(svc Service) *handler {
 
 func (h *handler) RegisterRoutes(e *echo.Echo) {
 	e.POST("/wallets", h.CreateWallet)
-	e.GET("/wallets/:id", h.GetWallet)
-	e.DELETE("/wallets/:id", h.DeleteWallet)
+	// e.GET("/wallets/:id", h.GetWallet)
+	// e.DELETE("/wallets/:id", h.DeleteWallet)
 
 	e.POST("/wallets/:id/transactions", h.CreateTransaction)
 	e.GET("/wallets/:id/transactions", h.GetTransactions)
@@ -58,7 +59,7 @@ func (h *handler) CreateWallet(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	wallet, err := h.svc.Create(&info)
+	wallet, err := h.svc.CreateWallet(c.Request().Context(), &info)
 	if err != nil && isBadRequest(err) {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -66,29 +67,29 @@ func (h *handler) CreateWallet(c echo.Context) error {
 	return c.JSON(http.StatusCreated, wallet)
 }
 
-// 200 => successfully read
-// 404 => wallet with given id may not exist
-// 500 => any other error
-func (h *handler) GetWallet(c echo.Context) error {
-	wallet, err := h.svc.Get(c.Param("id"))
-	if err != nil && err == ErrWalletNotFound {
-		return echo.NewHTTPError(http.StatusNotFound, err.Error())
-	}
+// // 200 => successfully read
+// // 404 => wallet with given id may not exist
+// // 500 => any other error
+// func (h *handler) GetWallet(c echo.Context) error {
+// 	wallet, err := h.svc.GetWallet(c.Request().Context(), c.Param("id"))
+// 	if err != nil && err == ErrWalletNotFound {
+// 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+// 	}
 
-	return c.JSON(http.StatusOK, wallet)
-}
+// 	return c.JSON(http.StatusOK, wallet)
+// }
 
-// 204 => successfully deleted
-// 404 => wallet with given id may not exist
-// 500 => any other error
-func (h *handler) DeleteWallet(c echo.Context) error {
-	err := h.svc.Delete(c.Param("id"))
-	if err != nil && err == ErrWalletNotFound {
-		return echo.NewHTTPError(http.StatusNotFound, err.Error())
-	}
+// // 204 => successfully deleted
+// // 404 => wallet with given id may not exist
+// // 500 => any other error
+// func (h *handler) DeleteWallet(c echo.Context) error {
+// 	err := h.svc.DeleteWallet(c.Request().Context(), c.Param("id"))
+// 	if err != nil && err == ErrWalletNotFound {
+// 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // 201 => successfully created
 // 404 => wallet not found

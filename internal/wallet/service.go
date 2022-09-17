@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gokcelb/wallet-api/config"
@@ -14,9 +15,9 @@ var (
 )
 
 type Repository interface {
-	Create(Wallet) (Wallet, error)
-	Read(id string) (Wallet, error)
-	Delete(id string) error
+	Create(ctx context.Context, wallet Wallet) (string, error)
+	// Read(ctx context.Context, id string) (Wallet, error)
+	// Delete(ctx context.Context, id string) error
 }
 
 type service struct {
@@ -28,7 +29,7 @@ func NewService(repo Repository, conf config.Conf) *service {
 	return &service{repo, conf}
 }
 
-func (s *service) Create(info *WalletCreationInfo) (Wallet, error) {
+func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error) {
 	if info.BalanceUpperLimit > s.conf.Wallet.MaxBalance {
 		return Wallet{}, ErrAboveMaximumBalanceLimit
 	}
@@ -44,22 +45,23 @@ func (s *service) Create(info *WalletCreationInfo) (Wallet, error) {
 		TransactionUpperLimit: info.TransactionUpperLimit,
 	}
 
-	wallet, err := s.repo.Create(wallet)
+	walletId, err := s.repo.Create(ctx, wallet)
 	if err != nil {
 		return Wallet{}, err
 	}
 
+	wallet.Id = walletId
 	return wallet, nil
 }
 
-func (s *service) Get(id string) (Wallet, error) {
-	wallet, err := s.repo.Read(id)
-	if err != nil {
-		return Wallet{}, ErrWalletNotFound
-	}
+// func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
+// 	wallet, err := s.repo.Read(ctx, id)
+// 	if err != nil {
+// 		return Wallet{}, ErrWalletNotFound
+// 	}
 
-	return wallet, nil
-}
+// 	return wallet, nil
+// }
 
 func (s *service) Delete(id string) error {
 	return nil

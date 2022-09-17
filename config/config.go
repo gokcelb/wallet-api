@@ -9,8 +9,15 @@ const key = "APP_ENV"
 const defaultEnv = "dev"
 
 type Conf struct {
+	Mongo       MongoConf       `json:"mongo"`
 	Wallet      WalletConf      `json:"wallet"`
 	Transaction TransactionConf `json:"transaction"`
+}
+
+type MongoConf struct {
+	Uri        string `json:"uri"`
+	Database   string `json:"database"`
+	Collection string `json:"collection"`
 }
 
 type WalletConf struct {
