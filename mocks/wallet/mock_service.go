@@ -50,6 +50,20 @@ func (mr *MockServiceMockRecorder) CreateWallet(ctx, info interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWallet", reflect.TypeOf((*MockService)(nil).CreateWallet), ctx, info)
 }
 
+// DeleteWallet mocks base method.
+func (m *MockService) DeleteWallet(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteWallet", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteWallet indicates an expected call of DeleteWallet.
+func (mr *MockServiceMockRecorder) DeleteWallet(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWallet", reflect.TypeOf((*MockService)(nil).DeleteWallet), ctx, id)
+}
+
 // GetWallet mocks base method.
 func (m *MockService) GetWallet(ctx context.Context, id string) (wallet.Wallet, error) {
 	m.ctrl.T.Helper()

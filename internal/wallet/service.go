@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/gokcelb/wallet-api/config"
@@ -19,7 +20,7 @@ type Repository interface {
 	Create(ctx context.Context, wallet Wallet) (string, error)
 	Read(ctx context.Context, id string) (Wallet, error)
 	ReadByUserId(ctx context.Context, userId string) (Wallet, error)
-	// Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id string) error
 }
 
 type service struct {
@@ -74,6 +75,11 @@ func (s *service) checkIfWalletWithUserIdExists(ctx context.Context, userId stri
 	return wallet != (Wallet{}) && err == nil
 }
 
-func (s *service) Delete(id string) error {
-	return nil
+func (s *service) DeleteWallet(ctx context.Context, id string) error {
+	_, err := s.repo.Read(ctx, id)
+	if err != nil && errors.Is(err, ErrWalletNotFound) {
+		return ErrWalletNotFound
+	}
+
+	return s.repo.Delete(ctx, id)
 }

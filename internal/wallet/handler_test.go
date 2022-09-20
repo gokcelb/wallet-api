@@ -196,3 +196,53 @@ func TestHandlerGetWallet(t *testing.T) {
 		})
 	}
 }
+
+func TestHandlerDeleteWallet(t *testing.T) {
+	e := echo.New()
+	mockService := createMockService(t)
+	h := wallet.NewHandler(mockService)
+	h.RegisterRoutes(e)
+	testServer := httptest.NewServer(e.Server.Handler)
+	defer testServer.Close()
+
+	testCases := []struct {
+		desc                   string
+		givenWalletID          string
+		mockSvcError           error
+		expectedResponseStatus int
+	}{
+		{
+			desc:                   "wallet id exists, return success",
+			givenWalletID:          "1",
+			mockSvcError:           nil,
+			expectedResponseStatus: 204,
+		},
+		{
+			desc:                   "wallet id does not exist, return error",
+			givenWalletID:          "2",
+			mockSvcError:           wallet.ErrWalletNotFound,
+			expectedResponseStatus: 404,
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			mockService.
+				EXPECT().
+				DeleteWallet(gomock.Any(), tC.givenWalletID).
+				Return(tC.mockSvcError)
+
+			url := fmt.Sprintf("%s/wallets/%s", testServer.URL, tC.givenWalletID)
+			req, err := http.NewRequest("DELETE", url, nil)
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+
+			res, err := testServer.Client().Do(req)
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+
+			assert.Equal(t, res.StatusCode, tC.expectedResponseStatus)
+		})
+	}
+}

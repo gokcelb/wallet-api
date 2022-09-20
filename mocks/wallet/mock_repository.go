@@ -50,6 +50,20 @@ func (mr *MockRepositoryMockRecorder) Create(ctx, wallet interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, wallet)
 }
 
+// Delete mocks base method.
+func (m *MockRepository) Delete(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockRepositoryMockRecorder) Delete(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockRepository)(nil).Delete), ctx, id)
+}
+
 // Read mocks base method.
 func (m *MockRepository) Read(ctx context.Context, id string) (wallet.Wallet, error) {
 	m.ctrl.T.Helper()

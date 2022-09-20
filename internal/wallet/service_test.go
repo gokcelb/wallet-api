@@ -186,3 +186,52 @@ func TestServiceGetWallet(t *testing.T) {
 		})
 	}
 }
+
+func TestServiceDeleteWallet(t *testing.T) {
+	mockRepository := createMockRepository(t)
+	s := wallet.NewService(mockRepository, getConf())
+
+	testCases := []struct {
+		desc                     string
+		givenWalletID            string
+		mockRepoReadWalletWallet wallet.Wallet
+		mockRepoReadWalletErr    error
+		mockRepoDeleteWalletErr  error
+		expectedErr              error
+	}{
+		{
+			desc:                     "wallet id exists, delete wallet",
+			givenWalletID:            "1",
+			mockRepoReadWalletWallet: wallet.Wallet{Id: "1"},
+			mockRepoReadWalletErr:    nil,
+			mockRepoDeleteWalletErr:  nil,
+			expectedErr:              nil,
+		},
+		{
+			desc:                     "wallet id does not exist, return error",
+			givenWalletID:            "2",
+			mockRepoReadWalletWallet: wallet.Wallet{},
+			mockRepoReadWalletErr:    wallet.ErrWalletNotFound,
+			expectedErr:              wallet.ErrWalletNotFound,
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			mockRepository.
+				EXPECT().
+				Read(context.TODO(), tC.givenWalletID).
+				Return(tC.mockRepoReadWalletWallet, tC.mockRepoReadWalletErr)
+
+			if tC.mockRepoReadWalletErr == nil {
+				mockRepository.
+					EXPECT().
+					Delete(context.TODO(), tC.givenWalletID).
+					Return(tC.mockRepoDeleteWalletErr)
+			}
+
+			err := s.DeleteWallet(context.TODO(), tC.givenWalletID)
+
+			assert.Equal(t, tC.expectedErr, err)
+		})
+	}
+}

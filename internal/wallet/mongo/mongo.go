@@ -59,6 +59,17 @@ func (m *Mongo) ReadByUserId(ctx context.Context, userId string) (wallet.Wallet,
 	return *newWalletFromMongoWallet(&mongoWallet), nil
 }
 
+func (m *Mongo) Delete(ctx context.Context, id string) error {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	_, err = m.collection.DeleteOne(ctx, primitive.M{"_id": objectID})
+	return err
+}
+
 func newMongoWalletFromWallet(wallet wallet.Wallet) *mongoWallet {
 	return &mongoWallet{
 		Id:                    primitive.NewObjectID(),
