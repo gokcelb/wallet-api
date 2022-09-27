@@ -9,9 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/gokcelb/wallet-api/internal/wallet"
-	mock_wallet "github.com/gokcelb/wallet-api/mocks/wallet"
+	"github.com/gokcelb/wallet-api/internal/wallet/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -27,8 +26,8 @@ func (e *testHandlerErr) Error() string {
 	return e.Message
 }
 
-func createMockWalletService(t *testing.T) *mock_wallet.MockWalletService {
-	return mock_wallet.NewMockWalletService(gomock.NewController(t))
+func createMockWalletService(t *testing.T) *mock.MockWalletService {
+	return mock.NewMockWalletService(gomock.NewController(t))
 }
 
 func TestHandlerCreateWallet(t *testing.T) {
@@ -263,22 +262,17 @@ func TestHandlerCreateTransaction(t *testing.T) {
 		givenWalletID              string
 		givenTransactionType       string
 		givenAmount                float64
-		mockSvcTransaction         transaction.Transaction
+		mockSvcTransactionID       string
 		mockSvcError               error
 		expectedResponseStatusCode int
 		expectedResponseBody       interface{}
 	}{
 		{
-			desc:                 "transaction creation info is valid, return transaction",
-			givenWalletID:        "1",
-			givenTransactionType: "deposit",
-			givenAmount:          300,
-			mockSvcTransaction: transaction.Transaction{
-				ID:       "1",
-				WalletID: "",
-				Type:     "deposit",
-				Amount:   300,
-			},
+			desc:                       "transaction creation info is valid, return transaction",
+			givenWalletID:              "1",
+			givenTransactionType:       "deposit",
+			givenAmount:                300,
+			mockSvcTransactionID:       "1",
 			mockSvcError:               nil,
 			expectedResponseStatusCode: 201,
 			expectedResponseBody:       "1",
@@ -288,7 +282,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "2",
 			givenTransactionType:       "deposit",
 			givenAmount:                300,
-			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrWalletNotFound,
 			expectedResponseStatusCode: 404,
 			expectedResponseBody:       testHandlerErr{wallet.ErrWalletNotFound.Error()},
@@ -298,7 +292,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "1",
 			givenTransactionType:       "some type",
 			givenAmount:                300,
-			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrInvalidTransactionType,
 			expectedResponseStatusCode: 400,
 			expectedResponseBody:       testHandlerErr{wallet.ErrInvalidTransactionType.Error()},
@@ -308,7 +302,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "1",
 			givenTransactionType:       "withdrawal",
 			givenAmount:                20000,
-			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrAboveMaximumTransactionLimit,
 			expectedResponseStatusCode: 422,
 			expectedResponseBody: testHandlerErr{
@@ -320,7 +314,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "1",
 			givenTransactionType:       "withdrawal",
 			givenAmount:                1,
-			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrBelowMinimumTransactionLimit,
 			expectedResponseStatusCode: 422,
 			expectedResponseBody: testHandlerErr{
@@ -332,7 +326,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "1",
 			givenTransactionType:       "withdrawal",
 			givenAmount:                500,
-			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrInsufficientBalance,
 			expectedResponseStatusCode: 422,
 			expectedResponseBody:       testHandlerErr{wallet.ErrInsufficientBalance.Error()},
@@ -349,7 +343,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			mockWalletService.
 				EXPECT().
 				CreateTransaction(gomock.Any(), &transactionCreationInfo).
-				Return(tC.mockSvcTransaction, tC.mockSvcError)
+				Return(tC.mockSvcTransactionID, tC.mockSvcError)
 
 			transactionCreationInfoBytes, _ := json.Marshal(transactionCreationInfo)
 			res, err := testServer.Client().Post(

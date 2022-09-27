@@ -9,6 +9,11 @@ import (
 	"github.com/gokcelb/wallet-api/internal/transaction"
 )
 
+const (
+	Deposit    string = "deposit"
+	Withdrawal        = "withdrawal"
+)
+
 var (
 	ErrWalletNotFound               = fmt.Errorf("no wallet with the given id exists")
 	ErrWalletWithUserIDExists       = fmt.Errorf("wallet with user id already exists")
@@ -26,13 +31,18 @@ type WalletRepository interface {
 	Delete(ctx context.Context, id string) error
 }
 
+type TransactionService interface {
+	CreateTransaction(ctx context.Context, txn *transaction.Transaction) (string, error)
+}
+
 type service struct {
 	wr   WalletRepository
+	ts   TransactionService
 	conf config.Conf
 }
 
-func NewService(wr WalletRepository, conf config.Conf) *service {
-	return &service{wr, conf}
+func NewService(wr WalletRepository, ts TransactionService, conf config.Conf) *service {
+	return &service{wr, ts, conf}
 }
 
 func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error) {
@@ -44,7 +54,7 @@ func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (W
 		return Wallet{}, ErrAboveMaximumTransactionLimit
 	}
 
-	if s.checkIfWalletWithUserIDExists(ctx, info.UserID) {
+	if s.checkWalletWithUserIDExists(ctx, info.UserID) {
 		return Wallet{}, ErrWalletWithUserIDExists
 	}
 
@@ -73,7 +83,7 @@ func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
 	return wallet, nil
 }
 
-func (s *service) checkIfWalletWithUserIDExists(ctx context.Context, userID string) bool {
+func (s *service) checkWalletWithUserIDExists(ctx context.Context, userID string) bool {
 	wallet, err := s.wr.ReadByUserID(ctx, userID)
 	return wallet != (Wallet{}) && err == nil
 }
@@ -87,6 +97,46 @@ func (s *service) DeleteWallet(ctx context.Context, id string) error {
 	return s.wr.Delete(ctx, id)
 }
 
-func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (transaction.Transaction, error) {
-	return transaction.Transaction{}, nil
+func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (string, error) {
+	w, err := s.wr.Read(ctx, info.WalletID)
+	if err != nil && errors.Is(err, ErrWalletNotFound) {
+		return "", ErrWalletNotFound
+	} else if err != nil {
+		return "", err
+	}
+
+	err = s.checkTransactionIsProcessable(w, info.Amount, info.TransactionType)
+	if err != nil {
+		return "", err
+	}
+
+	return s.ts.CreateTransaction(ctx, s.transactionFromTransactionCreationInfo(info))
+}
+
+func (s *service) checkTransactionIsProcessable(w Wallet, txnAmount float64, txnType string) error {
+	if txnAmount > w.TransactionUpperLimit {
+		return ErrAboveMaximumTransactionLimit
+	}
+
+	if txnAmount < s.conf.Transaction.MinAmount {
+		return ErrBelowMinimumTransactionLimit
+	}
+
+	if txnType == Deposit && w.Balance+txnAmount > w.BalanceUpperLimit {
+		return ErrAboveMaximumBalanceLimit
+	}
+
+	if txnType == Withdrawal && w.Balance-txnAmount < s.conf.Wallet.MinBalance {
+		return ErrInsufficientBalance
+	}
+
+	return nil
+}
+
+func (s *service) transactionFromTransactionCreationInfo(info *TransactionCreationInfo) *transaction.Transaction {
+	return &transaction.Transaction{
+		WalletID: info.WalletID,
+		Type:     info.TransactionType,
+		Amount:   info.Amount,
+	}
 }

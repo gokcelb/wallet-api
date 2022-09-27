@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/labstack/echo/v4"
 )
 
@@ -28,7 +27,7 @@ type WalletService interface {
 	CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error)
 	GetWallet(ctx context.Context, id string) (Wallet, error)
 	DeleteWallet(ctx context.Context, id string) error
-	CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (transaction.Transaction, error)
+	CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (string, error)
 }
 
 type handler struct {
@@ -116,7 +115,7 @@ func (h *handler) CreateTransaction(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	transaction, err := h.ws.CreateTransaction(c.Request().Context(), &info)
+	txnID, err := h.ws.CreateTransaction(c.Request().Context(), &info)
 	if err != nil && isNotFound(err) {
 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	} else if err != nil && isBadRequest(err) {
@@ -127,7 +126,7 @@ func (h *handler) CreateTransaction(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusCreated, transaction.ID)
+	return c.JSON(http.StatusCreated, txnID)
 }
 
 // 200 => successfully read

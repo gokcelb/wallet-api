@@ -31,7 +31,7 @@ func main() {
 	walletCollection := mongoClient.Database(conf.Mongo.Database).Collection(conf.Mongo.Collection)
 
 	walletRepository := walletMongo.NewMongo(walletCollection)
-	walletService := wallet.NewService(walletRepository, conf)
+	walletService := wallet.NewService(walletRepository, nil, conf)
 	walletHandler := wallet.NewHandler(walletService)
 
 	walletHandler.RegisterRoutes(e)

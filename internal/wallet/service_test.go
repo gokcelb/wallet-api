@@ -6,14 +6,19 @@ import (
 	"testing"
 
 	"github.com/gokcelb/wallet-api/config"
+	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/gokcelb/wallet-api/internal/wallet"
-	mock_wallet "github.com/gokcelb/wallet-api/mocks/wallet"
+	"github.com/gokcelb/wallet-api/internal/wallet/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
-func createMockWalletRepository(t *testing.T) *mock_wallet.MockWalletRepository {
-	return mock_wallet.NewMockWalletRepository(gomock.NewController(t))
+func createMockWalletRepository(t *testing.T) *mock.MockWalletRepository {
+	return mock.NewMockWalletRepository(gomock.NewController(t))
+}
+
+func createMockTransactionService(t *testing.T) *mock.MockTransactionService {
+	return mock.NewMockTransactionService(gomock.NewController(t))
 }
 
 func getConf() config.Conf {
@@ -27,7 +32,7 @@ func getConf() config.Conf {
 
 func TestServiceCreateWalletWithValidWalletCreationInfo(t *testing.T) {
 	mockRepository := createMockWalletRepository(t)
-	s := wallet.NewService(mockRepository, getConf())
+	s := wallet.NewService(mockRepository, nil, getConf())
 
 	walletCreationInfo := wallet.WalletCreationInfo{
 		UserID:                "1",
@@ -66,7 +71,7 @@ func TestServiceCreateWalletWithValidWalletCreationInfo(t *testing.T) {
 
 func TestServiceCreateWalletWithInvalidLimit(t *testing.T) {
 	mockRepository := createMockWalletRepository(t)
-	s := wallet.NewService(mockRepository, getConf())
+	s := wallet.NewService(mockRepository, nil, getConf())
 
 	testCases := []struct {
 		desc                    string
@@ -105,9 +110,9 @@ func TestServiceCreateWalletWithInvalidLimit(t *testing.T) {
 	}
 }
 
-func TestServiceCreateWalletWithExistingUserId(t *testing.T) {
+func TestServiceCreateWalletWithExistingUserID(t *testing.T) {
 	mockRepository := createMockWalletRepository(t)
-	s := wallet.NewService(mockRepository, getConf())
+	s := wallet.NewService(mockRepository, nil, getConf())
 
 	givenWalletCreationInfo := wallet.WalletCreationInfo{
 		UserID:                "1",
@@ -145,7 +150,7 @@ func TestServiceGetWallet(t *testing.T) {
 	}
 
 	mockRepository := createMockWalletRepository(t)
-	s := wallet.NewService(mockRepository, getConf())
+	s := wallet.NewService(mockRepository, nil, getConf())
 
 	testCases := []struct {
 		desc           string
@@ -189,7 +194,7 @@ func TestServiceGetWallet(t *testing.T) {
 
 func TestServiceDeleteWallet(t *testing.T) {
 	mockRepository := createMockWalletRepository(t)
-	s := wallet.NewService(mockRepository, getConf())
+	s := wallet.NewService(mockRepository, nil, getConf())
 
 	testCases := []struct {
 		desc                     string
@@ -232,6 +237,140 @@ func TestServiceDeleteWallet(t *testing.T) {
 			err := s.DeleteWallet(context.TODO(), tC.givenWalletID)
 
 			assert.Equal(t, tC.expectedErr, err)
+		})
+	}
+}
+
+func TestServiceCreateTransactionWithValidTransactionCreationInfo(t *testing.T) {
+	mockRepository := createMockWalletRepository(t)
+	mockTransactionService := createMockTransactionService(t)
+	s := wallet.NewService(mockRepository, mockTransactionService, getConf())
+
+	givenTransactionCreationInfo := &wallet.TransactionCreationInfo{
+		WalletID:        "1",
+		TransactionType: "withdrawal",
+		Amount:          300,
+	}
+	mockRepoGetWalletWallet := wallet.Wallet{
+		ID:                    "1",
+		UserID:                "1",
+		Balance:               500,
+		BalanceUpperLimit:     10000,
+		TransactionUpperLimit: 1000,
+	}
+	convertedTxnSvcTransaction := &transaction.Transaction{
+		WalletID: "1",
+		Type:     "withdrawal",
+		Amount:   300,
+	}
+	mockTxnSvcTransactionID := "1"
+
+	mockRepository.
+		EXPECT().
+		Read(context.TODO(), givenTransactionCreationInfo.WalletID).
+		Return(mockRepoGetWalletWallet, nil)
+
+	mockTransactionService.
+		EXPECT().
+		CreateTransaction(context.TODO(), convertedTxnSvcTransaction).
+		Return(mockTxnSvcTransactionID, nil)
+
+	result, err := s.CreateTransaction(context.TODO(), givenTransactionCreationInfo)
+
+	assert.Equal(t, mockTxnSvcTransactionID, result)
+	assert.Nil(t, err)
+}
+
+func TestServiceCreateTransactionWithInvalidTransactionCreationInfo(t *testing.T) {
+	mockRepository := createMockWalletRepository(t)
+	s := wallet.NewService(mockRepository, nil, getConf())
+
+	testCases := []struct {
+		desc                         string
+		givenTransactionCreationInfo *wallet.TransactionCreationInfo
+		mockRepoGetWalletWallet      wallet.Wallet
+		mockRepoGetWalletErr         error
+		expectedTransactionID        string
+		expectedErr                  error
+	}{
+		{
+			desc: "wallet id does not exist, return error",
+			givenTransactionCreationInfo: &wallet.TransactionCreationInfo{
+				WalletID:        "2",
+				TransactionType: "deposit",
+				Amount:          100,
+			},
+			mockRepoGetWalletWallet: wallet.Wallet{},
+			mockRepoGetWalletErr:    wallet.ErrWalletNotFound,
+			expectedTransactionID:   "",
+			expectedErr:             wallet.ErrWalletNotFound,
+		},
+		{
+			desc: "transaction amount is above limit, return error",
+			givenTransactionCreationInfo: &wallet.TransactionCreationInfo{
+				WalletID:        "1",
+				TransactionType: "deposit",
+				Amount:          10000,
+			},
+			mockRepoGetWalletWallet: wallet.Wallet{
+				ID:                    "1",
+				UserID:                "1",
+				Balance:               0,
+				BalanceUpperLimit:     10000,
+				TransactionUpperLimit: 1000,
+			},
+			mockRepoGetWalletErr:  nil,
+			expectedTransactionID: "",
+			expectedErr:           wallet.ErrAboveMaximumTransactionLimit,
+		},
+		{
+			desc: "transaction amount is below requirement, return error",
+			givenTransactionCreationInfo: &wallet.TransactionCreationInfo{
+				WalletID:        "1",
+				TransactionType: "deposit",
+				Amount:          1,
+			},
+			mockRepoGetWalletWallet: wallet.Wallet{
+				ID:                    "1",
+				UserID:                "1",
+				Balance:               0,
+				BalanceUpperLimit:     10000,
+				TransactionUpperLimit: 1000,
+			},
+			mockRepoGetWalletErr:  nil,
+			expectedTransactionID: "",
+			expectedErr:           wallet.ErrBelowMinimumTransactionLimit,
+		},
+		{
+			desc: "balance is insufficient, return error",
+			givenTransactionCreationInfo: &wallet.TransactionCreationInfo{
+				WalletID:        "1",
+				TransactionType: "withdrawal",
+				Amount:          1000,
+			},
+			mockRepoGetWalletWallet: wallet.Wallet{
+				ID:                    "1",
+				UserID:                "1",
+				Balance:               100,
+				BalanceUpperLimit:     10000,
+				TransactionUpperLimit: 1000,
+			},
+			mockRepoGetWalletErr:  nil,
+			expectedTransactionID: "",
+			expectedErr:           wallet.ErrInsufficientBalance,
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			mockRepository.
+				EXPECT().
+				Read(context.TODO(), tC.givenTransactionCreationInfo.WalletID).
+				Return(tC.mockRepoGetWalletWallet, tC.mockRepoGetWalletErr)
+
+			id, err := s.CreateTransaction(context.TODO(), tC.givenTransactionCreationInfo)
+
+			assert.Equal(t, tC.expectedTransactionID, id)
+			assert.ErrorIs(t, err, tC.expectedErr)
 		})
 	}
 }

@@ -5,5 +5,10 @@ lint:
 	golangci-lint run
 
 mockgen:
-	mockgen -destination=mocks/wallet/mock_service.go -mock_names WalletService=MockWalletService -package=mock_wallet -source=./internal/wallet/handler.go
-	mockgen -destination=mocks/wallet/mock_repository.go -mock_names WalletRepository=MockWalletRepository -package=mock_wallet -source=./internal/wallet/service.go
+# wallet
+	mockgen -destination=internal/wallet/mock/wallet_repository.go -package mock github.com/gokcelb/wallet-api/internal/wallet WalletRepository
+	mockgen -destination=internal/wallet/mock/transaction_service.go -package mock github.com/gokcelb/wallet-api/internal/wallet TransactionService
+	mockgen -destination=internal/wallet/mock/wallet_service.go -package mock github.com/gokcelb/wallet-api/internal/wallet WalletService
+
+# transaction
+	mockgen -destination=internal/transaction/mock/transaction_repository.go -package mock github.com/gokcelb/wallet-api/internal/transaction TransactionRepository
