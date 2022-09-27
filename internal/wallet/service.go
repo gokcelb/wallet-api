@@ -6,30 +6,33 @@ import (
 	"fmt"
 
 	"github.com/gokcelb/wallet-api/config"
+	"github.com/gokcelb/wallet-api/internal/transaction"
 )
 
 var (
 	ErrWalletNotFound               = fmt.Errorf("no wallet with the given id exists")
-	ErrWalletWithUserIdExists       = fmt.Errorf("wallet with user id already exists")
+	ErrWalletWithUserIDExists       = fmt.Errorf("wallet with user id already exists")
 	ErrAboveMaximumBalanceLimit     = fmt.Errorf("wallet balance is above maximum balance limit")
 	ErrAboveMaximumTransactionLimit = fmt.Errorf("transaction is above maximum transaction limit")
 	ErrBelowMinimumTransactionLimit = fmt.Errorf("transaction is below minimum transaction limit")
+	ErrInvalidTransactionType       = fmt.Errorf("transaction type is invalid")
+	ErrInsufficientBalance          = fmt.Errorf("balance is insufficient")
 )
 
-type Repository interface {
+type WalletRepository interface {
 	Create(ctx context.Context, wallet Wallet) (string, error)
 	Read(ctx context.Context, id string) (Wallet, error)
-	ReadByUserId(ctx context.Context, userId string) (Wallet, error)
+	ReadByUserID(ctx context.Context, userId string) (Wallet, error)
 	Delete(ctx context.Context, id string) error
 }
 
 type service struct {
-	repo Repository
+	wr   WalletRepository
 	conf config.Conf
 }
 
-func NewService(repo Repository, conf config.Conf) *service {
-	return &service{repo, conf}
+func NewService(wr WalletRepository, conf config.Conf) *service {
+	return &service{wr, conf}
 }
 
 func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error) {
@@ -41,28 +44,28 @@ func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (W
 		return Wallet{}, ErrAboveMaximumTransactionLimit
 	}
 
-	if s.checkIfWalletWithUserIdExists(ctx, info.UserId) {
-		return Wallet{}, ErrWalletWithUserIdExists
+	if s.checkIfWalletWithUserIDExists(ctx, info.UserID) {
+		return Wallet{}, ErrWalletWithUserIDExists
 	}
 
 	wallet := Wallet{
-		UserId:                info.UserId,
+		UserID:                info.UserID,
 		Balance:               s.conf.Wallet.InitialBalance,
 		BalanceUpperLimit:     info.BalanceUpperLimit,
 		TransactionUpperLimit: info.TransactionUpperLimit,
 	}
 
-	walletId, err := s.repo.Create(ctx, wallet)
+	walletID, err := s.wr.Create(ctx, wallet)
 	if err != nil {
 		return Wallet{}, err
 	}
 
-	wallet.Id = walletId
+	wallet.ID = walletID
 	return wallet, nil
 }
 
 func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
-	wallet, err := s.repo.Read(ctx, id)
+	wallet, err := s.wr.Read(ctx, id)
 	if err != nil {
 		return Wallet{}, ErrWalletNotFound
 	}
@@ -70,16 +73,20 @@ func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
 	return wallet, nil
 }
 
-func (s *service) checkIfWalletWithUserIdExists(ctx context.Context, userId string) bool {
-	wallet, err := s.repo.ReadByUserId(ctx, userId)
+func (s *service) checkIfWalletWithUserIDExists(ctx context.Context, userID string) bool {
+	wallet, err := s.wr.ReadByUserID(ctx, userID)
 	return wallet != (Wallet{}) && err == nil
 }
 
 func (s *service) DeleteWallet(ctx context.Context, id string) error {
-	_, err := s.repo.Read(ctx, id)
+	_, err := s.wr.Read(ctx, id)
 	if err != nil && errors.Is(err, ErrWalletNotFound) {
 		return ErrWalletNotFound
 	}
 
-	return s.repo.Delete(ctx, id)
+	return s.wr.Delete(ctx, id)
+}
+
+func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (transaction.Transaction, error) {
+	return transaction.Transaction{}, nil
 }

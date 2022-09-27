@@ -15,7 +15,7 @@ type Conf struct {
 }
 
 type MongoConf struct {
-	Uri        string `json:"uri"`
+	URI        string `json:"uri"`
 	Database   string `json:"database"`
 	Collection string `json:"collection"`
 }

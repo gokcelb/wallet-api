@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/gokcelb/wallet-api/internal/wallet"
 	mock_wallet "github.com/gokcelb/wallet-api/mocks/wallet"
 	"github.com/golang/mock/gomock"
@@ -26,29 +27,30 @@ func (e *testHandlerErr) Error() string {
 	return e.Message
 }
 
-func createMockService(t *testing.T) *mock_wallet.MockService {
-	return mock_wallet.NewMockService(gomock.NewController(t))
+func createMockWalletService(t *testing.T) *mock_wallet.MockWalletService {
+	return mock_wallet.NewMockWalletService(gomock.NewController(t))
 }
 
-func TestHandlerPostWallet(t *testing.T) {
+func TestHandlerCreateWallet(t *testing.T) {
 	newWallet := wallet.Wallet{
-		Id:                    "1",
-		UserId:                "1",
+		ID:                    "1",
+		UserID:                "1",
 		Balance:               0,
 		BalanceUpperLimit:     1000,
 		TransactionUpperLimit: 500,
 	}
 
-	e := echo.New()
-	mockService := createMockService(t)
+	mockService := createMockWalletService(t)
 	h := wallet.NewHandler(mockService)
+
+	e := echo.New()
 	h.RegisterRoutes(e)
 	testServer := httptest.NewServer(e.Server.Handler)
 	defer testServer.Close()
 
 	testCases := []struct {
 		desc                       string
-		givenUserId                string
+		givenUserID                string
 		givenBalanceUpperLimit     float64
 		givenTransactionUpperLimit float64
 		mockSvcWallet              wallet.Wallet
@@ -58,7 +60,7 @@ func TestHandlerPostWallet(t *testing.T) {
 	}{
 		{
 			desc:                       "wallet creation info is valid, return new wallet",
-			givenUserId:                "1",
+			givenUserID:                "1",
 			givenBalanceUpperLimit:     1000,
 			givenTransactionUpperLimit: 500,
 			mockSvcWallet:              newWallet,
@@ -68,40 +70,40 @@ func TestHandlerPostWallet(t *testing.T) {
 		},
 		{
 			desc:                       "balance upper limit is not valid, return error",
-			givenUserId:                "2",
+			givenUserID:                "2",
 			givenBalanceUpperLimit:     30000,
 			givenTransactionUpperLimit: 100,
 			mockSvcWallet:              wallet.Wallet{},
 			mockSvcError:               wallet.ErrAboveMaximumBalanceLimit,
-			expectedStatusCode:         400,
+			expectedStatusCode:         422,
 			expectedResponseBody:       testHandlerErr{wallet.ErrAboveMaximumBalanceLimit.Error()},
 		},
 		{
 			desc:                       "transaction upper limit is not valid, return error",
-			givenUserId:                "3",
+			givenUserID:                "3",
 			givenBalanceUpperLimit:     3000,
 			givenTransactionUpperLimit: 10000,
 			mockSvcWallet:              wallet.Wallet{},
 			mockSvcError:               wallet.ErrAboveMaximumTransactionLimit,
-			expectedStatusCode:         400,
+			expectedStatusCode:         422,
 			expectedResponseBody:       testHandlerErr{wallet.ErrAboveMaximumTransactionLimit.Error()},
 		},
 		{
 			desc:                       "wallet with user id already exists, return error",
-			givenUserId:                "1",
+			givenUserID:                "1",
 			givenBalanceUpperLimit:     3000,
 			givenTransactionUpperLimit: 1000,
 			mockSvcWallet:              wallet.Wallet{},
-			mockSvcError:               wallet.ErrWalletWithUserIdExists,
-			expectedStatusCode:         400,
-			expectedResponseBody:       testHandlerErr{wallet.ErrWalletWithUserIdExists.Error()},
+			mockSvcError:               wallet.ErrWalletWithUserIDExists,
+			expectedStatusCode:         422,
+			expectedResponseBody:       testHandlerErr{wallet.ErrWalletWithUserIDExists.Error()},
 		},
 	}
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			walletCreationInfo := wallet.WalletCreationInfo{
-				UserId:                tC.givenUserId,
+				UserID:                tC.givenUserID,
 				BalanceUpperLimit:     tC.givenBalanceUpperLimit,
 				TransactionUpperLimit: tC.givenTransactionUpperLimit,
 			}
@@ -134,15 +136,15 @@ func TestHandlerGetWallet(t *testing.T) {
 	validWalletId := "1"
 	invalidWalletId := "2"
 	mockWallet := wallet.Wallet{
-		Id:                    "1",
-		UserId:                "1",
+		ID:                    "1",
+		UserID:                "1",
 		Balance:               0,
 		BalanceUpperLimit:     1000,
 		TransactionUpperLimit: 100,
 	}
 
 	e := echo.New()
-	mockService := createMockService(t)
+	mockService := createMockWalletService(t)
 	h := wallet.NewHandler(mockService)
 	h.RegisterRoutes(e)
 	testServer := httptest.NewServer(e.Server.Handler)
@@ -199,7 +201,7 @@ func TestHandlerGetWallet(t *testing.T) {
 
 func TestHandlerDeleteWallet(t *testing.T) {
 	e := echo.New()
-	mockService := createMockService(t)
+	mockService := createMockWalletService(t)
 	h := wallet.NewHandler(mockService)
 	h.RegisterRoutes(e)
 	testServer := httptest.NewServer(e.Server.Handler)
@@ -243,6 +245,128 @@ func TestHandlerDeleteWallet(t *testing.T) {
 			}
 
 			assert.Equal(t, res.StatusCode, tC.expectedResponseStatus)
+		})
+	}
+}
+
+func TestHandlerCreateTransaction(t *testing.T) {
+	mockWalletService := createMockWalletService(t)
+	h := wallet.NewHandler(mockWalletService)
+
+	e := echo.New()
+	h.RegisterRoutes(e)
+	testServer := httptest.NewServer(e.Server.Handler)
+	defer testServer.Close()
+
+	testCases := []struct {
+		desc                       string
+		givenWalletID              string
+		givenTransactionType       string
+		givenAmount                float64
+		mockSvcTransaction         transaction.Transaction
+		mockSvcError               error
+		expectedResponseStatusCode int
+		expectedResponseBody       interface{}
+	}{
+		{
+			desc:                 "transaction creation info is valid, return transaction",
+			givenWalletID:        "1",
+			givenTransactionType: "deposit",
+			givenAmount:          300,
+			mockSvcTransaction: transaction.Transaction{
+				ID:       "1",
+				WalletID: "",
+				Type:     "deposit",
+				Amount:   300,
+			},
+			mockSvcError:               nil,
+			expectedResponseStatusCode: 201,
+			expectedResponseBody:       "1",
+		},
+		{
+			desc:                       "wallet id does not exist, return error",
+			givenWalletID:              "2",
+			givenTransactionType:       "deposit",
+			givenAmount:                300,
+			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcError:               wallet.ErrWalletNotFound,
+			expectedResponseStatusCode: 404,
+			expectedResponseBody:       testHandlerErr{wallet.ErrWalletNotFound.Error()},
+		},
+		{
+			desc:                       "transaction type is not valid, return error",
+			givenWalletID:              "1",
+			givenTransactionType:       "some type",
+			givenAmount:                300,
+			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcError:               wallet.ErrInvalidTransactionType,
+			expectedResponseStatusCode: 400,
+			expectedResponseBody:       testHandlerErr{wallet.ErrInvalidTransactionType.Error()},
+		},
+		{
+			desc:                       "transaction amount above requirements, return error",
+			givenWalletID:              "1",
+			givenTransactionType:       "withdrawal",
+			givenAmount:                20000,
+			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcError:               wallet.ErrAboveMaximumTransactionLimit,
+			expectedResponseStatusCode: 422,
+			expectedResponseBody: testHandlerErr{
+				Message: wallet.ErrAboveMaximumTransactionLimit.Error(),
+			},
+		},
+		{
+			desc:                       "transaction amount above requirements, return error",
+			givenWalletID:              "1",
+			givenTransactionType:       "withdrawal",
+			givenAmount:                1,
+			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcError:               wallet.ErrBelowMinimumTransactionLimit,
+			expectedResponseStatusCode: 422,
+			expectedResponseBody: testHandlerErr{
+				Message: wallet.ErrBelowMinimumTransactionLimit.Error(),
+			},
+		},
+		{
+			desc:                       "insufficient balance, return error",
+			givenWalletID:              "1",
+			givenTransactionType:       "withdrawal",
+			givenAmount:                500,
+			mockSvcTransaction:         transaction.Transaction{},
+			mockSvcError:               wallet.ErrInsufficientBalance,
+			expectedResponseStatusCode: 422,
+			expectedResponseBody:       testHandlerErr{wallet.ErrInsufficientBalance.Error()},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			transactionCreationInfo := wallet.TransactionCreationInfo{
+				WalletID:        tC.givenWalletID,
+				TransactionType: tC.givenTransactionType,
+				Amount:          tC.givenAmount,
+			}
+
+			mockWalletService.
+				EXPECT().
+				CreateTransaction(gomock.Any(), &transactionCreationInfo).
+				Return(tC.mockSvcTransaction, tC.mockSvcError)
+
+			transactionCreationInfoBytes, _ := json.Marshal(transactionCreationInfo)
+			res, err := testServer.Client().Post(
+				fmt.Sprintf("%s/wallets/%s/transactions", testServer.URL, tC.givenWalletID),
+				contentType,
+				bytes.NewReader(transactionCreationInfoBytes),
+			)
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+			defer res.Body.Close()
+
+			resBodyBytes, _ := io.ReadAll(res.Body)
+			expectedResBodyBytes, _ := json.Marshal(tC.expectedResponseBody)
+
+			assert.Equal(t, tC.expectedResponseStatusCode, res.StatusCode)
+			assert.JSONEq(t, string(expectedResBodyBytes), string(resBodyBytes))
 		})
 	}
 }

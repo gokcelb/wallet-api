@@ -53,7 +53,7 @@ func main() {
 }
 
 func connectToMongo(ctx context.Context, conf config.Conf) *mongo.Client {
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(conf.Mongo.Uri))
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(conf.Mongo.URI))
 	if err != nil {
 		panic(err)
 	}

@@ -30,14 +30,14 @@ func (m *Mongo) Create(ctx context.Context, wallet wallet.Wallet) (string, error
 }
 
 func (m *Mongo) Read(ctx context.Context, id string) (wallet.Wallet, error) {
-	objectId, err := primitive.ObjectIDFromHex(id)
+	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		log.Error(err)
 		return wallet.Wallet{}, err
 	}
 
 	var mongoWallet mongoWallet
-	err = m.collection.FindOne(ctx, primitive.M{"_id": objectId}).Decode(&mongoWallet)
+	err = m.collection.FindOne(ctx, primitive.M{"_id": objectID}).Decode(&mongoWallet)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return wallet.Wallet{}, wallet.ErrWalletNotFound
 	} else if err != nil {
@@ -47,9 +47,9 @@ func (m *Mongo) Read(ctx context.Context, id string) (wallet.Wallet, error) {
 	return *newWalletFromMongoWallet(&mongoWallet), nil
 }
 
-func (m *Mongo) ReadByUserId(ctx context.Context, userId string) (wallet.Wallet, error) {
+func (m *Mongo) ReadByUserID(ctx context.Context, userID string) (wallet.Wallet, error) {
 	var mongoWallet mongoWallet
-	err := m.collection.FindOne(ctx, primitive.M{"user_id": userId}).Decode(&mongoWallet)
+	err := m.collection.FindOne(ctx, primitive.M{"user_id": userID}).Decode(&mongoWallet)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return wallet.Wallet{}, wallet.ErrWalletNotFound
 	} else if err != nil {
@@ -72,8 +72,8 @@ func (m *Mongo) Delete(ctx context.Context, id string) error {
 
 func newMongoWalletFromWallet(wallet wallet.Wallet) *mongoWallet {
 	return &mongoWallet{
-		Id:                    primitive.NewObjectID(),
-		UserId:                wallet.UserId,
+		ID:                    primitive.NewObjectID(),
+		UserID:                wallet.UserID,
 		Balance:               wallet.Balance,
 		BalanceUpperLimit:     wallet.BalanceUpperLimit,
 		TransactionUpperLimit: wallet.TransactionUpperLimit,
@@ -82,8 +82,8 @@ func newMongoWalletFromWallet(wallet wallet.Wallet) *mongoWallet {
 
 func newWalletFromMongoWallet(mongoWallet *mongoWallet) *wallet.Wallet {
 	return &wallet.Wallet{
-		Id:                    mongoWallet.Id.Hex(),
-		UserId:                mongoWallet.UserId,
+		ID:                    mongoWallet.ID.Hex(),
+		UserID:                mongoWallet.UserID,
 		Balance:               mongoWallet.Balance,
 		BalanceUpperLimit:     mongoWallet.BalanceUpperLimit,
 		TransactionUpperLimit: mongoWallet.TransactionUpperLimit,
