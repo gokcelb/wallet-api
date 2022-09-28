@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gokcelb/wallet-api/config"
+	"github.com/gokcelb/wallet-api/internal/transaction"
+	transactionMongo "github.com/gokcelb/wallet-api/internal/transaction/mongo"
 	"github.com/gokcelb/wallet-api/internal/wallet"
 	walletMongo "github.com/gokcelb/wallet-api/internal/wallet/mongo"
 	"github.com/labstack/echo/v4"
@@ -28,10 +30,17 @@ func main() {
 	mongoClient := connectToMongo(ctx, conf)
 	defer disconnectFromMongo(ctx, mongoClient)
 
-	walletCollection := mongoClient.Database(conf.Mongo.Database).Collection(conf.Mongo.Collection)
+	transactionCollection := mongoClient.
+		Database(conf.Mongo.Database).
+		Collection(conf.Mongo.Collection.Transaction)
+	transactionRepository := transactionMongo.NewMongo(transactionCollection)
+	transactionService := transaction.NewService(transactionRepository)
 
+	walletCollection := mongoClient.
+		Database(conf.Mongo.Database).
+		Collection(conf.Mongo.Collection.Wallet)
 	walletRepository := walletMongo.NewMongo(walletCollection)
-	walletService := wallet.NewService(walletRepository, nil, conf)
+	walletService := wallet.NewService(walletRepository, transactionService, conf)
 	walletHandler := wallet.NewHandler(walletService)
 
 	walletHandler.RegisterRoutes(e)

@@ -22,6 +22,7 @@ var (
 	ErrBelowMinimumTransactionLimit = fmt.Errorf("transaction is below minimum transaction limit")
 	ErrInvalidTransactionType       = fmt.Errorf("transaction type is invalid")
 	ErrInsufficientBalance          = fmt.Errorf("balance is insufficient")
+	ErrWalletBalanceUpdateFailed    = fmt.Errorf("wallet balance could not be updated")
 )
 
 type WalletRepository interface {
@@ -29,6 +30,7 @@ type WalletRepository interface {
 	Read(ctx context.Context, id string) (Wallet, error)
 	ReadByUserID(ctx context.Context, userId string) (Wallet, error)
 	Delete(ctx context.Context, id string) error
+	UpdateBalance(ctx context.Context, id string, newBalance float64) error
 }
 
 type TransactionService interface {
@@ -98,14 +100,16 @@ func (s *service) DeleteWallet(ctx context.Context, id string) error {
 }
 
 func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (string, error) {
+	if info.TransactionType != Deposit && info.TransactionType != Withdrawal {
+		return "", ErrInvalidTransactionType
+	}
+
 	w, err := s.wr.Read(ctx, info.WalletID)
 	if err != nil && errors.Is(err, ErrWalletNotFound) {
-		return "", ErrWalletNotFound
-	} else if err != nil {
 		return "", err
 	}
 
-	err = s.checkTransactionIsProcessable(w, info.Amount, info.TransactionType)
+	err = s.processTransaction(ctx, w, info.Amount, info.TransactionType)
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +117,7 @@ func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreati
 	return s.ts.CreateTransaction(ctx, s.transactionFromTransactionCreationInfo(info))
 }
 
-func (s *service) checkTransactionIsProcessable(w Wallet, txnAmount float64, txnType string) error {
+func (s *service) processTransaction(ctx context.Context, w Wallet, txnAmount float64, txnType string) error {
 	if txnAmount > w.TransactionUpperLimit {
 		return ErrAboveMaximumTransactionLimit
 	}
@@ -130,7 +134,14 @@ func (s *service) checkTransactionIsProcessable(w Wallet, txnAmount float64, txn
 		return ErrInsufficientBalance
 	}
 
-	return nil
+	var newBalance float64
+	if txnType == Deposit {
+		newBalance = w.Balance + txnAmount
+	} else if txnType == Withdrawal {
+		newBalance = w.Balance - txnAmount
+	}
+
+	return s.wr.UpdateBalance(ctx, w.ID, newBalance)
 }
 
 func (s *service) transactionFromTransactionCreationInfo(info *TransactionCreationInfo) *transaction.Transaction {

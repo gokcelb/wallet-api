@@ -2,7 +2,10 @@
     "mongo": {
         "uri": "mongodb://localhost:27017",
         "database": "wallet-api",
-        "collection": "wallets"
+        "collection": {
+          "wallet": "wallets",
+          "transaction": "transactions"
+        }
     },
     "wallet": {
         "initialBalance": 0,

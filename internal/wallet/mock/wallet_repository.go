@@ -93,3 +93,17 @@ func (mr *MockWalletRepositoryMockRecorder) ReadByUserID(arg0, arg1 interface{})
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByUserID", reflect.TypeOf((*MockWalletRepository)(nil).ReadByUserID), arg0, arg1)
 }
+
+// UpdateBalance mocks base method.
+func (m *MockWalletRepository) UpdateBalance(arg0 context.Context, arg1 string, arg2 float64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBalance", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateBalance indicates an expected call of UpdateBalance.
+func (mr *MockWalletRepositoryMockRecorder) UpdateBalance(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBalance", reflect.TypeOf((*MockWalletRepository)(nil).UpdateBalance), arg0, arg1, arg2)
+}

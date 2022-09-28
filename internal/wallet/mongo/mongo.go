@@ -6,6 +6,7 @@ import (
 
 	"github.com/gokcelb/wallet-api/internal/wallet"
 	"github.com/labstack/gommon/log"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -67,6 +68,16 @@ func (m *Mongo) Delete(ctx context.Context, id string) error {
 	}
 
 	_, err = m.collection.DeleteOne(ctx, primitive.M{"_id": objectID})
+	return err
+}
+
+func (m *Mongo) UpdateBalance(ctx context.Context, id string, newBalance float64) error {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Error(err)
+	}
+
+	_, err = m.collection.UpdateByID(ctx, objectID, bson.M{"$set": bson.M{"balance": newBalance}})
 	return err
 }
 

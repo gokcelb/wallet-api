@@ -15,9 +15,14 @@ type Conf struct {
 }
 
 type MongoConf struct {
-	URI        string `json:"uri"`
-	Database   string `json:"database"`
-	Collection string `json:"collection"`
+	URI        string         `json:"uri"`
+	Database   string         `json:"database"`
+	Collection CollectionConf `json:"collection"`
+}
+
+type CollectionConf struct {
+	Wallet      string `json:"wallet"`
+	Transaction string `json:"transaction"`
 }
 
 type WalletConf struct {
