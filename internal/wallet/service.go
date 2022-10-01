@@ -11,7 +11,7 @@ import (
 
 const (
 	Deposit    string = "deposit"
-	Withdrawal        = "withdrawal"
+	Withdrawal string = "withdrawal"
 )
 
 var (
@@ -35,6 +35,7 @@ type WalletRepository interface {
 
 type TransactionService interface {
 	CreateTransaction(ctx context.Context, txn *transaction.Transaction) (string, error)
+	GetTransaction(ctx context.Context, id string, typeFilter string) (*transaction.Transaction, error)
 }
 
 type service struct {
@@ -115,6 +116,10 @@ func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreati
 	}
 
 	return s.ts.CreateTransaction(ctx, s.transactionFromTransactionCreationInfo(info))
+}
+
+func (s *service) GetTransaction(ctx context.Context, id string, typeFilter string) (*transaction.Transaction, error) {
+	return s.ts.GetTransaction(ctx, id, typeFilter)
 }
 
 func (s *service) processTransaction(ctx context.Context, w Wallet, txnAmount float64, txnType string) error {

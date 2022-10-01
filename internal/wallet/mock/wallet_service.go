@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	transaction "github.com/gokcelb/wallet-api/internal/transaction"
 	wallet "github.com/gokcelb/wallet-api/internal/wallet"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -77,6 +78,21 @@ func (m *MockWalletService) DeleteWallet(arg0 context.Context, arg1 string) erro
 func (mr *MockWalletServiceMockRecorder) DeleteWallet(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWallet", reflect.TypeOf((*MockWalletService)(nil).DeleteWallet), arg0, arg1)
+}
+
+// GetTransaction mocks base method.
+func (m *MockWalletService) GetTransaction(arg0 context.Context, arg1, arg2 string) (*transaction.Transaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTransaction", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*transaction.Transaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTransaction indicates an expected call of GetTransaction.
+func (mr *MockWalletServiceMockRecorder) GetTransaction(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransaction", reflect.TypeOf((*MockWalletService)(nil).GetTransaction), arg0, arg1, arg2)
 }
 
 // GetWallet mocks base method.

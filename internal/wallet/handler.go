@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/labstack/echo/v4"
 )
 
@@ -28,6 +29,7 @@ type WalletService interface {
 	GetWallet(ctx context.Context, id string) (Wallet, error)
 	DeleteWallet(ctx context.Context, id string) error
 	CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (string, error)
+	GetTransaction(ctx context.Context, id string, typeFilter string) (*transaction.Transaction, error)
 }
 
 type handler struct {
@@ -46,6 +48,10 @@ type TransactionCreationInfo struct {
 	Amount          float64 `json:"amount"`
 }
 
+type PostResponse struct {
+	ID string `json:"id"`
+}
+
 func NewHandler(ws WalletService) *handler {
 	return &handler{ws}
 }
@@ -56,8 +62,8 @@ func (h *handler) RegisterRoutes(e *echo.Echo) {
 	e.DELETE("/wallets/:id", h.DeleteWallet)
 
 	e.POST("/wallets/:walletId/transactions", h.CreateTransaction)
-	e.GET("/wallets/:id/transactions", h.GetTransactions)
-	e.GET("/wallets/:id/transactions/:transactionId", h.GetTransaction)
+	e.GET("/wallets/:walletId/transactions", h.GetTransactions)
+	e.GET("/wallets/:walletId/transactions/:id", h.GetTransaction)
 }
 
 // 201 => successfully created
@@ -126,7 +132,7 @@ func (h *handler) CreateTransaction(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusCreated, txnID)
+	return c.JSON(http.StatusCreated, PostResponse{txnID})
 }
 
 // 200 => successfully read
@@ -137,14 +143,28 @@ func (h *handler) CreateTransaction(c echo.Context) error {
 // 400 => type not valid
 // 400 => invalid pagination paramaters
 func (h *handler) GetTransactions(c echo.Context) error {
-	return nil
+	typeFilter := c.QueryParam("type")
+
+	txn, err := h.ws.GetTransaction(c.Request().Context(), c.Param("id"), typeFilter)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, txn)
 }
 
 // 200 => successfully read
 // 404 => wallet or transaction not found
 // 500 => any other error
 func (h *handler) GetTransaction(c echo.Context) error {
-	return nil
+	typeFilter := c.QueryParam("type")
+
+	txn, err := h.ws.GetTransaction(c.Request().Context(), c.Param("id"), typeFilter)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, txn)
 }
 
 func isBadRequest(err error) bool {
