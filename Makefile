@@ -12,3 +12,4 @@ mockgen:
 
 # transaction
 	mockgen -destination=internal/transaction/mock/transaction_repository.go -package mock github.com/gokcelb/wallet-api/internal/transaction TransactionRepository
+	mockgen -destination=internal/transaction/mock/transaction_service.go -package mock github.com/gokcelb/wallet-api/internal/transaction TransactionService

@@ -18,11 +18,15 @@ import (
 
 const contentType = "application/json"
 
-type testHandlerErr struct {
+type httpPostRes struct {
+	ID string `json:"id"`
+}
+
+type httpErr struct {
 	Message string `json:"message"`
 }
 
-func (e *testHandlerErr) Error() string {
+func (e *httpErr) Error() string {
 	return e.Message
 }
 
@@ -75,7 +79,7 @@ func TestHandlerCreateWallet(t *testing.T) {
 			mockSvcWallet:              wallet.Wallet{},
 			mockSvcError:               wallet.ErrAboveMaximumBalanceLimit,
 			expectedStatusCode:         422,
-			expectedResponseBody:       testHandlerErr{wallet.ErrAboveMaximumBalanceLimit.Error()},
+			expectedResponseBody:       httpErr{wallet.ErrAboveMaximumBalanceLimit.Error()},
 		},
 		{
 			desc:                       "transaction upper limit is not valid, return error",
@@ -85,7 +89,7 @@ func TestHandlerCreateWallet(t *testing.T) {
 			mockSvcWallet:              wallet.Wallet{},
 			mockSvcError:               wallet.ErrAboveMaximumTransactionLimit,
 			expectedStatusCode:         422,
-			expectedResponseBody:       testHandlerErr{wallet.ErrAboveMaximumTransactionLimit.Error()},
+			expectedResponseBody:       httpErr{wallet.ErrAboveMaximumTransactionLimit.Error()},
 		},
 		{
 			desc:                       "wallet with user id already exists, return error",
@@ -95,7 +99,7 @@ func TestHandlerCreateWallet(t *testing.T) {
 			mockSvcWallet:              wallet.Wallet{},
 			mockSvcError:               wallet.ErrWalletWithUserIDExists,
 			expectedStatusCode:         422,
-			expectedResponseBody:       testHandlerErr{wallet.ErrWalletWithUserIDExists.Error()},
+			expectedResponseBody:       httpErr{wallet.ErrWalletWithUserIDExists.Error()},
 		},
 	}
 
@@ -171,7 +175,7 @@ func TestHandlerGetWallet(t *testing.T) {
 			mockSvcWallet:        wallet.Wallet{},
 			mockSvcError:         wallet.ErrWalletNotFound,
 			expectedStatusCode:   404,
-			expectedResponseBody: testHandlerErr{wallet.ErrWalletNotFound.Error()},
+			expectedResponseBody: httpErr{wallet.ErrWalletNotFound.Error()},
 		},
 	}
 
@@ -275,7 +279,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			mockSvcTransactionID:       "1",
 			mockSvcError:               nil,
 			expectedResponseStatusCode: 201,
-			expectedResponseBody:       "1",
+			expectedResponseBody:       httpPostRes{"1"},
 		},
 		{
 			desc:                       "wallet id does not exist, return error",
@@ -285,7 +289,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrWalletNotFound,
 			expectedResponseStatusCode: 404,
-			expectedResponseBody:       testHandlerErr{wallet.ErrWalletNotFound.Error()},
+			expectedResponseBody:       httpErr{wallet.ErrWalletNotFound.Error()},
 		},
 		{
 			desc:                       "transaction type is not valid, return error",
@@ -295,7 +299,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrInvalidTransactionType,
 			expectedResponseStatusCode: 400,
-			expectedResponseBody:       testHandlerErr{wallet.ErrInvalidTransactionType.Error()},
+			expectedResponseBody:       httpErr{wallet.ErrInvalidTransactionType.Error()},
 		},
 		{
 			desc:                       "transaction amount above requirements, return error",
@@ -305,7 +309,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrAboveMaximumTransactionLimit,
 			expectedResponseStatusCode: 422,
-			expectedResponseBody: testHandlerErr{
+			expectedResponseBody: httpErr{
 				Message: wallet.ErrAboveMaximumTransactionLimit.Error(),
 			},
 		},
@@ -317,7 +321,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrBelowMinimumTransactionLimit,
 			expectedResponseStatusCode: 422,
-			expectedResponseBody: testHandlerErr{
+			expectedResponseBody: httpErr{
 				Message: wallet.ErrBelowMinimumTransactionLimit.Error(),
 			},
 		},
@@ -329,7 +333,7 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			mockSvcTransactionID:       "",
 			mockSvcError:               wallet.ErrInsufficientBalance,
 			expectedResponseStatusCode: 422,
-			expectedResponseBody:       testHandlerErr{wallet.ErrInsufficientBalance.Error()},
+			expectedResponseBody:       httpErr{wallet.ErrInsufficientBalance.Error()},
 		},
 	}
 	for _, tC := range testCases {

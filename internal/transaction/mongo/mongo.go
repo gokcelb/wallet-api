@@ -31,7 +31,25 @@ func (m *Mongo) Create(ctx context.Context, txn *transaction.Transaction) (strin
 	return result.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
-func (m *Mongo) Read(ctx context.Context, id string, typeFilter string) (*transaction.Transaction, error) {
+func (m *Mongo) Read(ctx context.Context, id string) (*transaction.Transaction, error) {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	var mongoTxn mongoTransaction
+	err = m.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&mongoTxn)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, transaction.ErrTransactionNotFound
+	} else if err != nil {
+		return nil, err
+	}
+
+	return newTransactionFromMongoTransaction(&mongoTxn), nil
+}
+
+func (m *Mongo) ReadByType(ctx context.Context, id string, typeFilter string) (*transaction.Transaction, error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		log.Error(err)

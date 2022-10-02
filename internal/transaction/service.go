@@ -9,7 +9,7 @@ var ErrTransactionNotFound = errors.New("no transaction with the given id exists
 
 type TransactionRepository interface {
 	Create(ctx context.Context, txn *Transaction) (string, error)
-	Read(ctx context.Context, id string, typeFilter string) (*Transaction, error)
+	Read(ctx context.Context, id string) (*Transaction, error)
 }
 
 type service struct {
@@ -24,6 +24,6 @@ func (s *service) CreateTransaction(ctx context.Context, txn *Transaction) (stri
 	return s.tr.Create(ctx, txn)
 }
 
-func (s *service) GetTransaction(ctx context.Context, id string, typeFilter string) (*Transaction, error) {
-	return s.tr.Read(ctx, id, typeFilter)
+func (s *service) GetTransaction(ctx context.Context, id string) (*Transaction, error) {
+	return s.tr.Read(ctx, id)
 }

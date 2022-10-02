@@ -51,16 +51,31 @@ func (mr *MockTransactionRepositoryMockRecorder) Create(arg0, arg1 interface{}) 
 }
 
 // Read mocks base method.
-func (m *MockTransactionRepository) Read(arg0 context.Context, arg1, arg2 string) (*transaction.Transaction, error) {
+func (m *MockTransactionRepository) Read(arg0 context.Context, arg1 string) (*transaction.Transaction, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Read", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Read", arg0, arg1)
 	ret0, _ := ret[0].(*transaction.Transaction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Read indicates an expected call of Read.
-func (mr *MockTransactionRepositoryMockRecorder) Read(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockTransactionRepositoryMockRecorder) Read(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockTransactionRepository)(nil).Read), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockTransactionRepository)(nil).Read), arg0, arg1)
+}
+
+// ReadByType mocks base method.
+func (m *MockTransactionRepository) ReadByType(arg0 context.Context, arg1, arg2 string) (*transaction.Transaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadByType", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*transaction.Transaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadByType indicates an expected call of ReadByType.
+func (mr *MockTransactionRepositoryMockRecorder) ReadByType(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByType", reflect.TypeOf((*MockTransactionRepository)(nil).ReadByType), arg0, arg1, arg2)
 }

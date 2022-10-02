@@ -35,6 +35,7 @@ func main() {
 		Collection(conf.Mongo.Collection.Transaction)
 	transactionRepository := transactionMongo.NewMongo(transactionCollection)
 	transactionService := transaction.NewService(transactionRepository)
+	transactionHandler := transaction.NewHandler(transactionService)
 
 	walletCollection := mongoClient.
 		Database(conf.Mongo.Database).
@@ -44,6 +45,7 @@ func main() {
 	walletHandler := wallet.NewHandler(walletService)
 
 	walletHandler.RegisterRoutes(e)
+	transactionHandler.RegisterRoutes(e)
 
 	go func() {
 		if err := e.Start(":8000"); err != nil && err != http.ErrServerClosed {

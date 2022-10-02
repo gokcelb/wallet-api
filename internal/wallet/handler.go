@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/labstack/echo/v4"
 )
 
@@ -29,7 +28,6 @@ type WalletService interface {
 	GetWallet(ctx context.Context, id string) (Wallet, error)
 	DeleteWallet(ctx context.Context, id string) error
 	CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (string, error)
-	GetTransaction(ctx context.Context, id string, typeFilter string) (*transaction.Transaction, error)
 }
 
 type handler struct {
@@ -63,7 +61,6 @@ func (h *handler) RegisterRoutes(e *echo.Echo) {
 
 	e.POST("/wallets/:walletId/transactions", h.CreateTransaction)
 	e.GET("/wallets/:walletId/transactions", h.GetTransactions)
-	e.GET("/wallets/:walletId/transactions/:id", h.GetTransaction)
 }
 
 // 201 => successfully created
@@ -143,28 +140,7 @@ func (h *handler) CreateTransaction(c echo.Context) error {
 // 400 => type not valid
 // 400 => invalid pagination paramaters
 func (h *handler) GetTransactions(c echo.Context) error {
-	typeFilter := c.QueryParam("type")
-
-	txn, err := h.ws.GetTransaction(c.Request().Context(), c.Param("id"), typeFilter)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusCreated, txn)
-}
-
-// 200 => successfully read
-// 404 => wallet or transaction not found
-// 500 => any other error
-func (h *handler) GetTransaction(c echo.Context) error {
-	typeFilter := c.QueryParam("type")
-
-	txn, err := h.ws.GetTransaction(c.Request().Context(), c.Param("id"), typeFilter)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusCreated, txn)
+	return nil
 }
 
 func isBadRequest(err error) bool {

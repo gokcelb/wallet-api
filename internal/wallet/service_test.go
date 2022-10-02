@@ -270,6 +270,14 @@ func TestServiceCreateTransactionWithValidTransactionCreationInfo(t *testing.T) 
 		Read(context.TODO(), givenTransactionCreationInfo.WalletID).
 		Return(mockRepoGetWalletWallet, nil)
 
+	mockRepository.
+		EXPECT().
+		UpdateBalance(
+			context.TODO(),
+			givenTransactionCreationInfo.WalletID,
+			mockRepoGetWalletWallet.Balance-givenTransactionCreationInfo.Amount,
+		).Return(nil)
+
 	mockTransactionService.
 		EXPECT().
 		CreateTransaction(context.TODO(), convertedTxnSvcTransaction).
