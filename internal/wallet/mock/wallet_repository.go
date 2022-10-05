@@ -36,7 +36,7 @@ func (m *MockWalletRepository) EXPECT() *MockWalletRepositoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockWalletRepository) Create(arg0 context.Context, arg1 wallet.Wallet) (string, error) {
+func (m *MockWalletRepository) Create(arg0 context.Context, arg1 *wallet.Wallet) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", arg0, arg1)
 	ret0, _ := ret[0].(string)
@@ -65,10 +65,10 @@ func (mr *MockWalletRepositoryMockRecorder) Delete(arg0, arg1 interface{}) *gomo
 }
 
 // Read mocks base method.
-func (m *MockWalletRepository) Read(arg0 context.Context, arg1 string) (wallet.Wallet, error) {
+func (m *MockWalletRepository) Read(arg0 context.Context, arg1 string) (*wallet.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Read", arg0, arg1)
-	ret0, _ := ret[0].(wallet.Wallet)
+	ret0, _ := ret[0].(*wallet.Wallet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -80,10 +80,10 @@ func (mr *MockWalletRepositoryMockRecorder) Read(arg0, arg1 interface{}) *gomock
 }
 
 // ReadByUserID mocks base method.
-func (m *MockWalletRepository) ReadByUserID(arg0 context.Context, arg1 string) (wallet.Wallet, error) {
+func (m *MockWalletRepository) ReadByUserID(arg0 context.Context, arg1 string) (*wallet.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadByUserID", arg0, arg1)
-	ret0, _ := ret[0].(wallet.Wallet)
+	ret0, _ := ret[0].(*wallet.Wallet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

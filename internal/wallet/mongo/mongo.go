@@ -19,7 +19,7 @@ func NewMongo(collection *mongo.Collection) *Mongo {
 	return &Mongo{collection}
 }
 
-func (m *Mongo) Create(ctx context.Context, wallet wallet.Wallet) (string, error) {
+func (m *Mongo) Create(ctx context.Context, wallet *wallet.Wallet) (string, error) {
 	mongoWallet := newMongoWalletFromWallet(wallet)
 	result, err := m.collection.InsertOne(ctx, mongoWallet)
 	if err != nil {
@@ -30,34 +30,34 @@ func (m *Mongo) Create(ctx context.Context, wallet wallet.Wallet) (string, error
 	return result.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
-func (m *Mongo) Read(ctx context.Context, id string) (wallet.Wallet, error) {
+func (m *Mongo) Read(ctx context.Context, id string) (*wallet.Wallet, error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		log.Error(err)
-		return wallet.Wallet{}, err
+		return nil, err
 	}
 
 	var mongoWallet mongoWallet
 	err = m.collection.FindOne(ctx, primitive.M{"_id": objectID}).Decode(&mongoWallet)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		return wallet.Wallet{}, wallet.ErrWalletNotFound
+		return nil, wallet.ErrWalletNotFound
 	} else if err != nil {
-		return wallet.Wallet{}, err
+		return nil, err
 	}
 
-	return *newWalletFromMongoWallet(&mongoWallet), nil
+	return newWalletFromMongoWallet(&mongoWallet), nil
 }
 
-func (m *Mongo) ReadByUserID(ctx context.Context, userID string) (wallet.Wallet, error) {
+func (m *Mongo) ReadByUserID(ctx context.Context, userID string) (*wallet.Wallet, error) {
 	var mongoWallet mongoWallet
 	err := m.collection.FindOne(ctx, primitive.M{"user_id": userID}).Decode(&mongoWallet)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		return wallet.Wallet{}, wallet.ErrWalletNotFound
+		return nil, wallet.ErrWalletNotFound
 	} else if err != nil {
-		return wallet.Wallet{}, err
+		return nil, err
 	}
 
-	return *newWalletFromMongoWallet(&mongoWallet), nil
+	return newWalletFromMongoWallet(&mongoWallet), nil
 }
 
 func (m *Mongo) Delete(ctx context.Context, id string) error {
@@ -81,7 +81,7 @@ func (m *Mongo) UpdateBalance(ctx context.Context, id string, newBalance float64
 	return err
 }
 
-func newMongoWalletFromWallet(wallet wallet.Wallet) *mongoWallet {
+func newMongoWalletFromWallet(wallet *wallet.Wallet) *mongoWallet {
 	return &mongoWallet{
 		ID:                    primitive.NewObjectID(),
 		UserID:                wallet.UserID,

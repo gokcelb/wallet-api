@@ -51,10 +51,10 @@ func (mr *MockWalletServiceMockRecorder) CreateTransaction(arg0, arg1 interface{
 }
 
 // CreateWallet mocks base method.
-func (m *MockWalletService) CreateWallet(arg0 context.Context, arg1 *wallet.WalletCreationInfo) (wallet.Wallet, error) {
+func (m *MockWalletService) CreateWallet(arg0 context.Context, arg1 *wallet.WalletCreationInfo) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateWallet", arg0, arg1)
-	ret0, _ := ret[0].(wallet.Wallet)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -80,10 +80,10 @@ func (mr *MockWalletServiceMockRecorder) DeleteWallet(arg0, arg1 interface{}) *g
 }
 
 // GetWallet mocks base method.
-func (m *MockWalletService) GetWallet(arg0 context.Context, arg1 string) (wallet.Wallet, error) {
+func (m *MockWalletService) GetWallet(arg0 context.Context, arg1 string) (*wallet.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWallet", arg0, arg1)
-	ret0, _ := ret[0].(wallet.Wallet)
+	ret0, _ := ret[0].(*wallet.Wallet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

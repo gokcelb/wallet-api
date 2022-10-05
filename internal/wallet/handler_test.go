@@ -18,10 +18,6 @@ import (
 
 const contentType = "application/json"
 
-type httpPostRes struct {
-	ID string `json:"id"`
-}
-
 type httpErr struct {
 	Message string `json:"message"`
 }
@@ -34,17 +30,9 @@ func createMockWalletService(t *testing.T) *mock.MockWalletService {
 	return mock.NewMockWalletService(gomock.NewController(t))
 }
 
-func TestHandlerCreateWallet(t *testing.T) {
-	newWallet := wallet.Wallet{
-		ID:                    "1",
-		UserID:                "1",
-		Balance:               0,
-		BalanceUpperLimit:     1000,
-		TransactionUpperLimit: 500,
-	}
-
-	mockService := createMockWalletService(t)
-	h := wallet.NewHandler(mockService)
+func TestHandlerPostWallet(t *testing.T) {
+	mockWalletService := createMockWalletService(t)
+	h := wallet.NewHandler(mockWalletService)
 
 	e := echo.New()
 	h.RegisterRoutes(e)
@@ -56,8 +44,8 @@ func TestHandlerCreateWallet(t *testing.T) {
 		givenUserID                string
 		givenBalanceUpperLimit     float64
 		givenTransactionUpperLimit float64
-		mockSvcWallet              wallet.Wallet
-		mockSvcError               error
+		mockWSWalletID             string
+		mockWSError                error
 		expectedStatusCode         int
 		expectedResponseBody       interface{}
 	}{
@@ -66,18 +54,18 @@ func TestHandlerCreateWallet(t *testing.T) {
 			givenUserID:                "1",
 			givenBalanceUpperLimit:     1000,
 			givenTransactionUpperLimit: 500,
-			mockSvcWallet:              newWallet,
-			mockSvcError:               nil,
+			mockWSWalletID:             "1",
+			mockWSError:                nil,
 			expectedStatusCode:         201,
-			expectedResponseBody:       newWallet,
+			expectedResponseBody:       wallet.PostResponse{"1"},
 		},
 		{
 			desc:                       "balance upper limit is not valid, return error",
 			givenUserID:                "2",
 			givenBalanceUpperLimit:     30000,
 			givenTransactionUpperLimit: 100,
-			mockSvcWallet:              wallet.Wallet{},
-			mockSvcError:               wallet.ErrAboveMaximumBalanceLimit,
+			mockWSWalletID:             "",
+			mockWSError:                wallet.ErrAboveMaximumBalanceLimit,
 			expectedStatusCode:         422,
 			expectedResponseBody:       httpErr{wallet.ErrAboveMaximumBalanceLimit.Error()},
 		},
@@ -86,8 +74,8 @@ func TestHandlerCreateWallet(t *testing.T) {
 			givenUserID:                "3",
 			givenBalanceUpperLimit:     3000,
 			givenTransactionUpperLimit: 10000,
-			mockSvcWallet:              wallet.Wallet{},
-			mockSvcError:               wallet.ErrAboveMaximumTransactionLimit,
+			mockWSWalletID:             "",
+			mockWSError:                wallet.ErrAboveMaximumTransactionLimit,
 			expectedStatusCode:         422,
 			expectedResponseBody:       httpErr{wallet.ErrAboveMaximumTransactionLimit.Error()},
 		},
@@ -96,13 +84,12 @@ func TestHandlerCreateWallet(t *testing.T) {
 			givenUserID:                "1",
 			givenBalanceUpperLimit:     3000,
 			givenTransactionUpperLimit: 1000,
-			mockSvcWallet:              wallet.Wallet{},
-			mockSvcError:               wallet.ErrWalletWithUserIDExists,
+			mockWSWalletID:             "",
+			mockWSError:                wallet.ErrWalletWithUserIDExists,
 			expectedStatusCode:         422,
 			expectedResponseBody:       httpErr{wallet.ErrWalletWithUserIDExists.Error()},
 		},
 	}
-
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			walletCreationInfo := wallet.WalletCreationInfo{
@@ -110,10 +97,10 @@ func TestHandlerCreateWallet(t *testing.T) {
 				BalanceUpperLimit:     tC.givenBalanceUpperLimit,
 				TransactionUpperLimit: tC.givenTransactionUpperLimit,
 			}
-			mockService.
-				EXPECT().
+
+			mockWalletService.EXPECT().
 				CreateWallet(gomock.Any(), &walletCreationInfo).
-				Return(tC.mockSvcWallet, tC.mockSvcError)
+				Return(tC.mockWSWalletID, tC.mockWSError)
 
 			walletCreationInfoBytes, _ := json.Marshal(walletCreationInfo)
 			res, err := http.DefaultClient.Post(
@@ -136,58 +123,56 @@ func TestHandlerCreateWallet(t *testing.T) {
 }
 
 func TestHandlerGetWallet(t *testing.T) {
-	validWalletId := "1"
-	invalidWalletId := "2"
-	mockWallet := wallet.Wallet{
-		ID:                    "1",
-		UserID:                "1",
-		Balance:               0,
-		BalanceUpperLimit:     1000,
-		TransactionUpperLimit: 100,
-	}
+	mockWalletService := createMockWalletService(t)
+	h := wallet.NewHandler(mockWalletService)
 
 	e := echo.New()
-	mockService := createMockWalletService(t)
-	h := wallet.NewHandler(mockService)
 	h.RegisterRoutes(e)
 	testServer := httptest.NewServer(e.Server.Handler)
 	defer testServer.Close()
 
 	testCases := []struct {
 		desc                 string
-		requestedId          string
-		mockSvcWallet        wallet.Wallet
-		mockSvcError         error
+		givenID              string
+		mockWSWallet         *wallet.Wallet
+		mockWSErr            error
 		expectedStatusCode   int
 		expectedResponseBody interface{}
 	}{
 		{
-			desc:                 "wallet exists, return wallet",
-			requestedId:          validWalletId,
-			mockSvcWallet:        mockWallet,
-			mockSvcError:         nil,
-			expectedStatusCode:   200,
-			expectedResponseBody: mockWallet,
+			desc:    "wallet exists, return wallet",
+			givenID: "1",
+			mockWSWallet: &wallet.Wallet{
+				ID:                    "1",
+				UserID:                "1",
+				Balance:               0,
+				BalanceUpperLimit:     1000,
+				TransactionUpperLimit: 100,
+			},
+			mockWSErr:          nil,
+			expectedStatusCode: 200,
+			expectedResponseBody: &wallet.Wallet{
+				ID:                    "1",
+				UserID:                "1",
+				Balance:               0,
+				BalanceUpperLimit:     1000,
+				TransactionUpperLimit: 100,
+			},
 		},
 		{
 			desc:                 "wallet does not exist, return error",
-			requestedId:          invalidWalletId,
-			mockSvcWallet:        wallet.Wallet{},
-			mockSvcError:         wallet.ErrWalletNotFound,
+			givenID:              "2",
+			mockWSWallet:         nil,
+			mockWSErr:            wallet.ErrWalletNotFound,
 			expectedStatusCode:   404,
 			expectedResponseBody: httpErr{wallet.ErrWalletNotFound.Error()},
 		},
 	}
-
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			mockService.
-				EXPECT().
-				GetWallet(gomock.Any(), tC.requestedId).
-				Return(tC.mockSvcWallet, tC.mockSvcError)
+			mockWalletService.EXPECT().GetWallet(gomock.Any(), tC.givenID).Return(tC.mockWSWallet, tC.mockWSErr)
 
-			url := fmt.Sprintf("%s/wallets/%s", testServer.URL, tC.requestedId)
-			res, err := http.DefaultClient.Get(url)
+			res, err := http.DefaultClient.Get(fmt.Sprintf("%s/wallets/%s", testServer.URL, tC.givenID))
 			if err != nil {
 				assert.Fail(t, err.Error())
 			}
@@ -203,9 +188,10 @@ func TestHandlerGetWallet(t *testing.T) {
 }
 
 func TestHandlerDeleteWallet(t *testing.T) {
-	e := echo.New()
 	mockService := createMockWalletService(t)
 	h := wallet.NewHandler(mockService)
+
+	e := echo.New()
 	h.RegisterRoutes(e)
 	testServer := httptest.NewServer(e.Server.Handler)
 	defer testServer.Close()
@@ -213,31 +199,27 @@ func TestHandlerDeleteWallet(t *testing.T) {
 	testCases := []struct {
 		desc                   string
 		givenWalletID          string
-		mockSvcError           error
+		mockWSErr              error
 		expectedResponseStatus int
 	}{
 		{
 			desc:                   "wallet id exists, return success",
 			givenWalletID:          "1",
-			mockSvcError:           nil,
+			mockWSErr:              nil,
 			expectedResponseStatus: 204,
 		},
 		{
 			desc:                   "wallet id does not exist, return error",
 			givenWalletID:          "2",
-			mockSvcError:           wallet.ErrWalletNotFound,
+			mockWSErr:              wallet.ErrWalletNotFound,
 			expectedResponseStatus: 404,
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			mockService.
-				EXPECT().
-				DeleteWallet(gomock.Any(), tC.givenWalletID).
-				Return(tC.mockSvcError)
+			mockService.EXPECT().DeleteWallet(gomock.Any(), tC.givenWalletID).Return(tC.mockWSErr)
 
-			url := fmt.Sprintf("%s/wallets/%s", testServer.URL, tC.givenWalletID)
-			req, err := http.NewRequest("DELETE", url, nil)
+			req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/wallets/%s", testServer.URL, tC.givenWalletID), nil)
 			if err != nil {
 				assert.Fail(t, err.Error())
 			}
@@ -266,8 +248,8 @@ func TestHandlerCreateTransaction(t *testing.T) {
 		givenWalletID              string
 		givenTransactionType       string
 		givenAmount                float64
-		mockSvcTransactionID       string
-		mockSvcError               error
+		mockWSTransactionID        string
+		mockWSErr                  error
 		expectedResponseStatusCode int
 		expectedResponseBody       interface{}
 	}{
@@ -276,18 +258,18 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "1",
 			givenTransactionType:       "deposit",
 			givenAmount:                300,
-			mockSvcTransactionID:       "1",
-			mockSvcError:               nil,
+			mockWSTransactionID:        "1",
+			mockWSErr:                  nil,
 			expectedResponseStatusCode: 201,
-			expectedResponseBody:       httpPostRes{"1"},
+			expectedResponseBody:       wallet.PostResponse{"1"},
 		},
 		{
 			desc:                       "wallet id does not exist, return error",
 			givenWalletID:              "2",
 			givenTransactionType:       "deposit",
 			givenAmount:                300,
-			mockSvcTransactionID:       "",
-			mockSvcError:               wallet.ErrWalletNotFound,
+			mockWSTransactionID:        "",
+			mockWSErr:                  wallet.ErrWalletNotFound,
 			expectedResponseStatusCode: 404,
 			expectedResponseBody:       httpErr{wallet.ErrWalletNotFound.Error()},
 		},
@@ -296,8 +278,8 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "1",
 			givenTransactionType:       "some type",
 			givenAmount:                300,
-			mockSvcTransactionID:       "",
-			mockSvcError:               wallet.ErrInvalidTransactionType,
+			mockWSTransactionID:        "",
+			mockWSErr:                  wallet.ErrInvalidTransactionType,
 			expectedResponseStatusCode: 400,
 			expectedResponseBody:       httpErr{wallet.ErrInvalidTransactionType.Error()},
 		},
@@ -306,32 +288,28 @@ func TestHandlerCreateTransaction(t *testing.T) {
 			givenWalletID:              "1",
 			givenTransactionType:       "withdrawal",
 			givenAmount:                20000,
-			mockSvcTransactionID:       "",
-			mockSvcError:               wallet.ErrAboveMaximumTransactionLimit,
+			mockWSTransactionID:        "",
+			mockWSErr:                  wallet.ErrAboveMaximumTransactionLimit,
 			expectedResponseStatusCode: 422,
-			expectedResponseBody: httpErr{
-				Message: wallet.ErrAboveMaximumTransactionLimit.Error(),
-			},
+			expectedResponseBody:       httpErr{wallet.ErrAboveMaximumTransactionLimit.Error()},
 		},
 		{
 			desc:                       "transaction amount above requirements, return error",
 			givenWalletID:              "1",
 			givenTransactionType:       "withdrawal",
 			givenAmount:                1,
-			mockSvcTransactionID:       "",
-			mockSvcError:               wallet.ErrBelowMinimumTransactionLimit,
+			mockWSTransactionID:        "",
+			mockWSErr:                  wallet.ErrBelowMinimumTransactionLimit,
 			expectedResponseStatusCode: 422,
-			expectedResponseBody: httpErr{
-				Message: wallet.ErrBelowMinimumTransactionLimit.Error(),
-			},
+			expectedResponseBody:       httpErr{wallet.ErrBelowMinimumTransactionLimit.Error()},
 		},
 		{
 			desc:                       "insufficient balance, return error",
 			givenWalletID:              "1",
 			givenTransactionType:       "withdrawal",
 			givenAmount:                500,
-			mockSvcTransactionID:       "",
-			mockSvcError:               wallet.ErrInsufficientBalance,
+			mockWSTransactionID:        "",
+			mockWSErr:                  wallet.ErrInsufficientBalance,
 			expectedResponseStatusCode: 422,
 			expectedResponseBody:       httpErr{wallet.ErrInsufficientBalance.Error()},
 		},
@@ -344,10 +322,9 @@ func TestHandlerCreateTransaction(t *testing.T) {
 				Amount:          tC.givenAmount,
 			}
 
-			mockWalletService.
-				EXPECT().
+			mockWalletService.EXPECT().
 				CreateTransaction(gomock.Any(), &transactionCreationInfo).
-				Return(tC.mockSvcTransactionID, tC.mockSvcError)
+				Return(tC.mockWSTransactionID, tC.mockWSErr)
 
 			transactionCreationInfoBytes, _ := json.Marshal(transactionCreationInfo)
 			res, err := testServer.Client().Post(

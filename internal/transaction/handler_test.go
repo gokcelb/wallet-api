@@ -68,7 +68,9 @@ func TestHandlerGetTransaction(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			mockTransactionService.EXPECT().GetTransaction(gomock.Any(), tC.givenID).Return(tC.mockTxnSvcTxn, tC.mockTxnSvcErr)
+			mockTransactionService.EXPECT().
+				GetTransaction(gomock.Any(), tC.givenID).
+				Return(tC.mockTxnSvcTxn, tC.mockTxnSvcErr)
 
 			res, err := testServer.Client().Get(fmt.Sprintf("%s/transactions/%s", testServer.URL, tC.givenID))
 			if err != nil {

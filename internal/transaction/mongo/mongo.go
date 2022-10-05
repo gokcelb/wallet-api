@@ -23,7 +23,9 @@ func NewMongo(collection *mongo.Collection) *Mongo {
 func (m *Mongo) Create(ctx context.Context, txn *transaction.Transaction) (string, error) {
 	mongoTxn := newMongoTransactionFromTransaction(txn)
 	result, err := m.collection.InsertOne(ctx, mongoTxn)
-	if err != nil {
+	if err != nil && errors.Is(err, mongo.ErrNoDocuments) {
+		return "", transaction.ErrTransactionNotFound
+	} else if err != nil {
 		log.Error(err)
 		return "", err
 	}

@@ -2,8 +2,10 @@ package wallet
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
+	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/labstack/echo/v4"
 )
 
@@ -13,6 +15,7 @@ var badRequestErrors = []error{
 
 var notFoundErrors = []error{
 	ErrWalletNotFound,
+	transaction.ErrTransactionNotFound,
 }
 
 var unprocessableEntityErrors = []error{
@@ -24,8 +27,8 @@ var unprocessableEntityErrors = []error{
 }
 
 type WalletService interface {
-	CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error)
-	GetWallet(ctx context.Context, id string) (Wallet, error)
+	CreateWallet(ctx context.Context, info *WalletCreationInfo) (string, error)
+	GetWallet(ctx context.Context, id string) (*Wallet, error)
 	DeleteWallet(ctx context.Context, id string) error
 	CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (string, error)
 }
@@ -41,7 +44,7 @@ type WalletCreationInfo struct {
 }
 
 type TransactionCreationInfo struct {
-	WalletID        string  `param:"walletId"`
+	WalletID        string  `param:"id"`
 	TransactionType string  `json:"type"`
 	Amount          float64 `json:"amount"`
 }
@@ -59,59 +62,46 @@ func (h *handler) RegisterRoutes(e *echo.Echo) {
 	e.GET("/wallets/:id", h.GetWallet)
 	e.DELETE("/wallets/:id", h.DeleteWallet)
 
-	e.POST("/wallets/:walletId/transactions", h.CreateTransaction)
-	e.GET("/wallets/:walletId/transactions", h.GetTransactions)
+	e.POST("/wallets/:id/transactions", h.CreateTransaction)
+	e.GET("/wallets/:id/transactions", h.GetTransactions)
 }
 
-// 201 => successfully created
-// 400 => balanceUpperLimit and transactionUpperLimit may not be convertible to float
-// 400 => balanceUpperLimit and transactionUpperLimit may not meet config requirements
-// 500 => any other error
 func (h *handler) CreateWallet(c echo.Context) error {
 	var info WalletCreationInfo
 	if err := c.Bind(&info); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	wallet, err := h.ws.CreateWallet(c.Request().Context(), &info)
+	id, err := h.ws.CreateWallet(c.Request().Context(), &info)
 	if err != nil && isBadRequest(err) {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else if err != nil && isUnprocessableEntity(err) {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusCreated, wallet)
+	return c.JSON(http.StatusCreated, PostResponse{id})
 }
 
-// 200 => successfully read
-// 404 => wallet with given id may not exist
-// 500 => any other error
 func (h *handler) GetWallet(c echo.Context) error {
-	wallet, err := h.ws.GetWallet(c.Request().Context(), c.Param("id"))
-	if err != nil && err == ErrWalletNotFound {
+	w, err := h.ws.GetWallet(c.Request().Context(), c.Param("id"))
+	if err != nil && isNotFound(err) {
 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, wallet)
+	return c.JSON(http.StatusOK, w)
 }
 
-// 204 => successfully deleted
-// 404 => wallet with given id may not exist
-// 500 => any other error
 func (h *handler) DeleteWallet(c echo.Context) error {
 	err := h.ws.DeleteWallet(c.Request().Context(), c.Param("id"))
-	if err != nil && err == ErrWalletNotFound {
+	if err != nil && isNotFound(err) {
 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 
 	return c.NoContent(http.StatusNoContent)
 }
 
-// 201 => successfully created
-// 404 => wallet not found
-// 400 => type not valid
-// 422 => transaction amount does not meet config requirements
-// 500 => any other error
 func (h *handler) CreateTransaction(c echo.Context) error {
 	var info TransactionCreationInfo
 	if err := c.Bind(&info); err != nil {
@@ -157,7 +147,7 @@ func isUnprocessableEntity(err error) bool {
 
 func ContainsError(err error, errList []error) bool {
 	for _, e := range errList {
-		if err == e {
+		if errors.Is(e, err) {
 			return true
 		}
 	}

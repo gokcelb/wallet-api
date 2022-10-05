@@ -26,9 +26,9 @@ var (
 )
 
 type WalletRepository interface {
-	Create(ctx context.Context, wallet Wallet) (string, error)
-	Read(ctx context.Context, id string) (Wallet, error)
-	ReadByUserID(ctx context.Context, userId string) (Wallet, error)
+	Create(ctx context.Context, w *Wallet) (string, error)
+	Read(ctx context.Context, id string) (*Wallet, error)
+	ReadByUserID(ctx context.Context, userID string) (*Wallet, error)
 	Delete(ctx context.Context, id string) error
 	UpdateBalance(ctx context.Context, id string, newBalance float64) error
 }
@@ -47,53 +47,42 @@ func NewService(wr WalletRepository, ts TransactionService, conf config.Conf) *s
 	return &service{wr, ts, conf}
 }
 
-func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (Wallet, error) {
+func (s *service) CreateWallet(ctx context.Context, info *WalletCreationInfo) (string, error) {
 	if info.BalanceUpperLimit > s.conf.Wallet.MaxBalance {
-		return Wallet{}, ErrAboveMaximumBalanceLimit
+		return "", ErrAboveMaximumBalanceLimit
 	}
 
 	if info.TransactionUpperLimit > s.conf.Transaction.MaxAmount {
-		return Wallet{}, ErrAboveMaximumTransactionLimit
+		return "", ErrAboveMaximumTransactionLimit
 	}
 
 	if s.checkWalletWithUserIDExists(ctx, info.UserID) {
-		return Wallet{}, ErrWalletWithUserIDExists
+		return "", ErrWalletWithUserIDExists
 	}
 
-	wallet := Wallet{
+	wallet := &Wallet{
 		UserID:                info.UserID,
 		Balance:               s.conf.Wallet.InitialBalance,
 		BalanceUpperLimit:     info.BalanceUpperLimit,
 		TransactionUpperLimit: info.TransactionUpperLimit,
 	}
 
-	walletID, err := s.wr.Create(ctx, wallet)
-	if err != nil {
-		return Wallet{}, err
-	}
-
-	wallet.ID = walletID
-	return wallet, nil
+	return s.wr.Create(ctx, wallet)
 }
 
-func (s *service) GetWallet(ctx context.Context, id string) (Wallet, error) {
-	wallet, err := s.wr.Read(ctx, id)
-	if err != nil {
-		return Wallet{}, ErrWalletNotFound
-	}
-
-	return wallet, nil
+func (s *service) GetWallet(ctx context.Context, id string) (*Wallet, error) {
+	return s.wr.Read(ctx, id)
 }
 
 func (s *service) checkWalletWithUserIDExists(ctx context.Context, userID string) bool {
-	wallet, err := s.wr.ReadByUserID(ctx, userID)
-	return wallet != (Wallet{}) && err == nil
+	w, err := s.wr.ReadByUserID(ctx, userID)
+	return w != nil && err == nil
 }
 
 func (s *service) DeleteWallet(ctx context.Context, id string) error {
 	_, err := s.wr.Read(ctx, id)
-	if err != nil && errors.Is(err, ErrWalletNotFound) {
-		return ErrWalletNotFound
+	if err != nil {
+		return err
 	}
 
 	return s.wr.Delete(ctx, id)
@@ -117,7 +106,7 @@ func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreati
 	return s.ts.CreateTransaction(ctx, s.transactionFromTransactionCreationInfo(info))
 }
 
-func (s *service) processTransaction(ctx context.Context, w Wallet, txnAmount float64, txnType string) error {
+func (s *service) processTransaction(ctx context.Context, w *Wallet, txnAmount float64, txnType string) error {
 	if txnAmount > w.TransactionUpperLimit {
 		return ErrAboveMaximumTransactionLimit
 	}
