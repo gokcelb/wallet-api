@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/labstack/echo/v4"
@@ -26,11 +27,20 @@ var unprocessableEntityErrors = []error{
 	ErrInsufficientBalance,
 }
 
+var (
+	DefaultPageNo   = 0
+	DefaultPageSize = 10
+
+	ErrInvalidPageNo   = errors.New("pageNo cannot be converted to integer")
+	ErrInvalidPageSize = errors.New("pageSize cannot be converted to integer")
+)
+
 type WalletService interface {
 	CreateWallet(ctx context.Context, info *WalletCreationInfo) (string, error)
 	GetWallet(ctx context.Context, id string) (*Wallet, error)
 	DeleteWallet(ctx context.Context, id string) error
 	CreateTransaction(ctx context.Context, info *TransactionCreationInfo) (string, error)
+	GetTransactions(ctx context.Context, walletID, typeFilter string, pageNo, pageSize int) ([]*transaction.Transaction, error)
 }
 
 type handler struct {
@@ -122,15 +132,40 @@ func (h *handler) CreateTransaction(c echo.Context) error {
 	return c.JSON(http.StatusCreated, PostResponse{txnID})
 }
 
-// 200 => successfully read
-// 404 => wallet not found
-// 500 => any other error
-// * they should be able to filter by type
-// * they should be able to paginate
-// 400 => type not valid
-// 400 => invalid pagination paramaters
 func (h *handler) GetTransactions(c echo.Context) error {
-	return nil
+	pageNo, pageSize, err := h.getPaginationParamsOrDefault(c.QueryParam("pageNo"), c.QueryParam("pageSize"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	txns, err := h.ws.GetTransactions(c.Request().Context(), c.Param("id"), c.QueryParam("type"), pageNo, pageSize)
+	if err != nil && isBadRequest(err) {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	} else if err != nil && isNotFound(err) {
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, txns)
+}
+
+func (h *handler) getPaginationParamsOrDefault(pageNoQuery string, pageSizeQuery string) (int, int, error) {
+	if pageNoQuery == "" || pageSizeQuery == "" {
+		return DefaultPageNo, DefaultPageSize, nil
+	}
+
+	pageNo, err := strconv.Atoi(pageNoQuery)
+	if err != nil {
+		return 0, 0, ErrInvalidPageNo
+	}
+
+	pageSize, err := strconv.Atoi(pageSizeQuery)
+	if err != nil {
+		return 0, 0, ErrInvalidPageSize
+	}
+
+	return pageNo, pageSize, nil
 }
 
 func isBadRequest(err error) bool {

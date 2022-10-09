@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Mongo struct {
@@ -51,24 +52,52 @@ func (m *Mongo) Read(ctx context.Context, id string) (*transaction.Transaction, 
 	return newTransactionFromMongoTransaction(&mongoTxn), nil
 }
 
-func (m *Mongo) ReadByType(ctx context.Context, id string, typeFilter string) (*transaction.Transaction, error) {
-	objectID, err := primitive.ObjectIDFromHex(id)
+func (m *Mongo) ReadByWalletID(ctx context.Context, walletID string, pageNo, pageSize int) ([]*transaction.Transaction, error) {
+	opts := options.Find().SetSkip(int64(pageNo * pageSize)).SetLimit(int64(pageSize))
+	filter := bson.D{bson.E{Key: "wallet_id", Value: walletID}}
+
+	cursor, err := m.collection.Find(ctx, filter, opts)
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	filter := bson.D{bson.E{Key: "_id", Value: objectID}, bson.E{Key: "type", Value: typeFilter}}
-
-	var mongoTxn mongoTransaction
-	err = m.collection.FindOne(ctx, filter).Decode(&mongoTxn)
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, transaction.ErrTransactionNotFound
-	} else if err != nil {
+	var mongoTxns []mongoTransaction
+	if err = cursor.All(ctx, &mongoTxns); err != nil {
+		log.Error(err)
 		return nil, err
 	}
 
-	return newTransactionFromMongoTransaction(&mongoTxn), nil
+	txns := []*transaction.Transaction{}
+	for _, mongoTxn := range mongoTxns {
+		txns = append(txns, newTransactionFromMongoTransaction(&mongoTxn))
+	}
+
+	return txns, nil
+}
+
+func (m *Mongo) ReadByWalletIDFilterByType(ctx context.Context, walletID, typeFilter string, pageNo, pageSize int) ([]*transaction.Transaction, error) {
+	opts := options.Find().SetSkip(int64(pageNo * pageSize)).SetLimit(int64(pageSize))
+	filter := bson.D{bson.E{Key: "wallet_id", Value: walletID}, bson.E{Key: "type", Value: typeFilter}}
+
+	cursor, err := m.collection.Find(ctx, filter, opts)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	var mongoTxns []mongoTransaction
+	if err = cursor.All(ctx, &mongoTxns); err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	txns := []*transaction.Transaction{}
+	for _, mongoTxn := range mongoTxns {
+		txns = append(txns, newTransactionFromMongoTransaction(&mongoTxn))
+	}
+
+	return txns, nil
 }
 
 func newMongoTransactionFromTransaction(txn *transaction.Transaction) *mongoTransaction {

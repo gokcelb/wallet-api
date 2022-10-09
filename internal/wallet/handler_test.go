@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gokcelb/wallet-api/internal/transaction"
 	"github.com/gokcelb/wallet-api/internal/wallet"
 	"github.com/gokcelb/wallet-api/internal/wallet/mock"
 	"github.com/golang/mock/gomock"
@@ -332,6 +333,205 @@ func TestHandlerCreateTransaction(t *testing.T) {
 				contentType,
 				bytes.NewReader(transactionCreationInfoBytes),
 			)
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+			defer res.Body.Close()
+
+			resBodyBytes, _ := io.ReadAll(res.Body)
+			expectedResBodyBytes, _ := json.Marshal(tC.expectedResponseBody)
+
+			assert.Equal(t, tC.expectedResponseStatusCode, res.StatusCode)
+			assert.JSONEq(t, string(expectedResBodyBytes), string(resBodyBytes))
+		})
+	}
+}
+
+func TestHandlerGetTransactions(t *testing.T) {
+	mockWalletService := createMockWalletService(t)
+	h := wallet.NewHandler(mockWalletService)
+
+	e := echo.New()
+	h.RegisterRoutes(e)
+	testServer := httptest.NewServer(e.Server.Handler)
+	defer testServer.Close()
+
+	testCases := []struct {
+		desc                       string
+		givenWalletID              string
+		givenType                  string
+		mockWSTransactions         []*transaction.Transaction
+		mockWSErr                  error
+		expectedResponseStatusCode int
+		expectedResponseBody       interface{}
+	}{
+		{
+			desc:          "wallet id exists, return all transactions",
+			givenWalletID: "1",
+			givenType:     "",
+			mockWSTransactions: []*transaction.Transaction{
+				{
+					ID:       "1",
+					WalletID: "1",
+					Type:     "deposit",
+					Amount:   200,
+				},
+				{
+					ID:       "2",
+					WalletID: "1",
+					Type:     "withdrawal",
+					Amount:   100,
+				},
+			},
+			mockWSErr:                  nil,
+			expectedResponseStatusCode: 200,
+			expectedResponseBody: []*transaction.Transaction{
+				{
+					ID:       "1",
+					WalletID: "1",
+					Type:     "deposit",
+					Amount:   200,
+				},
+				{
+					ID:       "2",
+					WalletID: "1",
+					Type:     "withdrawal",
+					Amount:   100,
+				},
+			},
+		},
+		{
+			desc:          "wallet id exists, return type-filtered transactions",
+			givenWalletID: "2",
+			givenType:     "deposit",
+			mockWSTransactions: []*transaction.Transaction{
+				{
+					ID:       "1",
+					WalletID: "2",
+					Type:     "deposit",
+					Amount:   200,
+				},
+				{
+					ID:       "2",
+					WalletID: "2",
+					Type:     "deposit",
+					Amount:   300,
+				},
+			},
+			mockWSErr:                  nil,
+			expectedResponseStatusCode: 200,
+			expectedResponseBody: []*transaction.Transaction{
+				{
+					ID:       "1",
+					WalletID: "2",
+					Type:     "deposit",
+					Amount:   200,
+				},
+				{
+					ID:       "2",
+					WalletID: "2",
+					Type:     "deposit",
+					Amount:   300,
+				},
+			},
+		},
+		{
+			desc:                       "wallet id exists, invalid type filter, return error",
+			givenWalletID:              "1",
+			givenType:                  "invalid",
+			mockWSTransactions:         nil,
+			mockWSErr:                  wallet.ErrInvalidTransactionType,
+			expectedResponseStatusCode: 400,
+			expectedResponseBody:       httpErr{wallet.ErrInvalidTransactionType.Error()},
+		},
+		{
+			desc:                       "wallet id does not exist, return error",
+			givenWalletID:              "3",
+			givenType:                  "",
+			mockWSTransactions:         nil,
+			mockWSErr:                  wallet.ErrWalletNotFound,
+			expectedResponseStatusCode: 404,
+			expectedResponseBody:       httpErr{wallet.ErrWalletNotFound.Error()},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			mockWalletService.EXPECT().
+				GetTransactions(
+					gomock.Any(),
+					tC.givenWalletID,
+					tC.givenType,
+					wallet.DefaultPageNo,
+					wallet.DefaultPageSize,
+				).Return(tC.mockWSTransactions, tC.mockWSErr)
+
+			var url string
+			if tC.givenType == "" {
+				url = fmt.Sprintf("%s/wallets/%s/transactions", testServer.URL, tC.givenWalletID)
+			} else {
+				url = fmt.Sprintf("%s/wallets/%s/transactions?type=%s", testServer.URL, tC.givenWalletID, tC.givenType)
+			}
+
+			res, err := testServer.Client().Get(url)
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+			defer res.Body.Close()
+
+			resBodyBytes, _ := io.ReadAll(res.Body)
+			expectedResBodyBytes, _ := json.Marshal(tC.expectedResponseBody)
+
+			assert.Equal(t, tC.expectedResponseStatusCode, res.StatusCode)
+			assert.JSONEq(t, string(expectedResBodyBytes), string(resBodyBytes))
+		})
+	}
+}
+
+func TestHandlerGetTransactionsInvalidPaginationParams(t *testing.T) {
+	mockWalletService := createMockWalletService(t)
+	h := wallet.NewHandler(mockWalletService)
+
+	e := echo.New()
+	h.RegisterRoutes(e)
+	testServer := httptest.NewServer(e.Server.Handler)
+	defer testServer.Close()
+
+	testCases := []struct {
+		desc                       string
+		givenWalletID              string
+		givenPageNo                string
+		givenPageSize              string
+		expectedResponseStatusCode int
+		expectedResponseBody       interface{}
+	}{
+		{
+			desc:                       "invalid pageNo, return error",
+			givenWalletID:              "1",
+			givenPageNo:                "e",
+			givenPageSize:              "10",
+			expectedResponseStatusCode: 400,
+			expectedResponseBody:       httpErr{wallet.ErrInvalidPageNo.Error()},
+		},
+		{
+			desc:                       "invalid pageSize, return error",
+			givenWalletID:              "1",
+			givenPageNo:                "0",
+			givenPageSize:              "e",
+			expectedResponseStatusCode: 400,
+			expectedResponseBody:       httpErr{wallet.ErrInvalidPageSize.Error()},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			url := fmt.Sprintf(
+				"%s/wallets/%s/transactions?pageNo=%s&pageSize=%s",
+				testServer.URL,
+				tC.givenWalletID,
+				tC.givenPageNo,
+				tC.givenPageSize,
+			)
+
+			res, err := testServer.Client().Get(url)
 			if err != nil {
 				assert.Fail(t, err.Error())
 			}

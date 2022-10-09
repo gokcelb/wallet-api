@@ -64,3 +64,33 @@ func (mr *MockTransactionRepositoryMockRecorder) Read(arg0, arg1 interface{}) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockTransactionRepository)(nil).Read), arg0, arg1)
 }
+
+// ReadByWalletID mocks base method.
+func (m *MockTransactionRepository) ReadByWalletID(arg0 context.Context, arg1 string, arg2, arg3 int) ([]*transaction.Transaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadByWalletID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*transaction.Transaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadByWalletID indicates an expected call of ReadByWalletID.
+func (mr *MockTransactionRepositoryMockRecorder) ReadByWalletID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByWalletID", reflect.TypeOf((*MockTransactionRepository)(nil).ReadByWalletID), arg0, arg1, arg2, arg3)
+}
+
+// ReadByWalletIDFilterByType mocks base method.
+func (m *MockTransactionRepository) ReadByWalletIDFilterByType(arg0 context.Context, arg1, arg2 string, arg3, arg4 int) ([]*transaction.Transaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadByWalletIDFilterByType", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].([]*transaction.Transaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadByWalletIDFilterByType indicates an expected call of ReadByWalletIDFilterByType.
+func (mr *MockTransactionRepositoryMockRecorder) ReadByWalletIDFilterByType(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByWalletIDFilterByType", reflect.TypeOf((*MockTransactionRepository)(nil).ReadByWalletIDFilterByType), arg0, arg1, arg2, arg3, arg4)
+}

@@ -35,6 +35,7 @@ type WalletRepository interface {
 
 type TransactionService interface {
 	CreateTransaction(ctx context.Context, txn *transaction.Transaction) (string, error)
+	GetTransactionsByWalletID(ctx context.Context, walletID, typeFilter string, pageNo, pageSize int) ([]*transaction.Transaction, error)
 }
 
 type service struct {
@@ -74,11 +75,6 @@ func (s *service) GetWallet(ctx context.Context, id string) (*Wallet, error) {
 	return s.wr.Read(ctx, id)
 }
 
-func (s *service) checkWalletWithUserIDExists(ctx context.Context, userID string) bool {
-	w, err := s.wr.ReadByUserID(ctx, userID)
-	return w != nil && err == nil
-}
-
 func (s *service) DeleteWallet(ctx context.Context, id string) error {
 	_, err := s.wr.Read(ctx, id)
 	if err != nil {
@@ -104,6 +100,24 @@ func (s *service) CreateTransaction(ctx context.Context, info *TransactionCreati
 	}
 
 	return s.ts.CreateTransaction(ctx, s.transactionFromTransactionCreationInfo(info))
+}
+
+func (s *service) GetTransactions(ctx context.Context, walletID, typeFilter string, pageNo, pageSize int) ([]*transaction.Transaction, error) {
+	if typeFilter != "" && typeFilter != Deposit && typeFilter != Withdrawal {
+		return nil, ErrInvalidTransactionType
+	}
+
+	_, err := s.wr.Read(ctx, walletID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.ts.GetTransactionsByWalletID(ctx, walletID, typeFilter, pageNo, pageSize)
+}
+
+func (s *service) checkWalletWithUserIDExists(ctx context.Context, userID string) bool {
+	w, err := s.wr.ReadByUserID(ctx, userID)
+	return w != nil && err == nil
 }
 
 func (s *service) processTransaction(ctx context.Context, w *Wallet, txnAmount float64, txnType string) error {
