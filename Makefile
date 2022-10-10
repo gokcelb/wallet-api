@@ -1,6 +1,9 @@
 test:
 	go test ./...
 
+coverage:
+	go test -coverprofile=coverage.out ./...      
+
 lint:
 	golangci-lint run
 
