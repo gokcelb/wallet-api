@@ -3,7 +3,6 @@ package wallet
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/gokcelb/wallet-api/config"
 	"github.com/gokcelb/wallet-api/internal/transaction"
@@ -15,14 +14,14 @@ const (
 )
 
 var (
-	ErrWalletNotFound               = fmt.Errorf("no wallet with the given id exists")
-	ErrWalletWithUserIDExists       = fmt.Errorf("wallet with user id already exists")
-	ErrAboveMaximumBalanceLimit     = fmt.Errorf("wallet balance is above maximum balance limit")
-	ErrAboveMaximumTransactionLimit = fmt.Errorf("transaction is above maximum transaction limit")
-	ErrBelowMinimumTransactionLimit = fmt.Errorf("transaction is below minimum transaction limit")
-	ErrInvalidTransactionType       = fmt.Errorf("transaction type is invalid")
-	ErrInsufficientBalance          = fmt.Errorf("balance is insufficient")
-	ErrWalletBalanceUpdateFailed    = fmt.Errorf("wallet balance could not be updated")
+	ErrWalletNotFound               = errors.New("no wallet with the given id exists")
+	ErrWalletWithUserIDExists       = errors.New("wallet with user id already exists")
+	ErrAboveMaximumBalanceLimit     = errors.New("wallet balance is above maximum balance limit")
+	ErrAboveMaximumTransactionLimit = errors.New("transaction is above maximum transaction limit")
+	ErrBelowMinimumTransactionLimit = errors.New("transaction is below minimum transaction limit")
+	ErrInvalidTransactionType       = errors.New("transaction type is invalid")
+	ErrInsufficientBalance          = errors.New("balance is insufficient")
+	ErrWalletBalanceUpdateFailed    = errors.New("wallet balance could not be updated")
 )
 
 type WalletRepository interface {

@@ -357,3 +357,53 @@ func TestServiceCreateTransactionWithInvalidTransactionCreationInfo(t *testing.T
 		})
 	}
 }
+
+func TestServiceGetTransactionsWithValidParams(t *testing.T) {
+	mockWalletRepository := createMockWalletRepository(t)
+	mockTransactionService := createMockTransactionService(t)
+	s := wallet.NewService(mockWalletRepository, mockTransactionService, getConf())
+
+	expectedTxns := []*transaction.Transaction{
+		{
+			ID:       "1",
+			WalletID: "1",
+			Type:     "deposit",
+			Amount:   100,
+		},
+	}
+
+	mockWalletRepository.EXPECT().Read(context.TODO(), "1").Return(nil, nil)
+
+	mockTransactionService.EXPECT().
+		GetTransactionsByWalletID(context.TODO(), "1", "deposit", wallet.DefaultPageNo, wallet.DefaultPageSize).
+		Return(expectedTxns, nil)
+
+	txns, err := s.GetTransactions(context.TODO(), "1", "deposit", wallet.DefaultPageNo, wallet.DefaultPageSize)
+
+	assert.Equal(t, expectedTxns, txns)
+	assert.Nil(t, err)
+}
+
+func TestServiceGetTransactionsWithInvalidType(t *testing.T) {
+	mockWalletRepository := createMockWalletRepository(t)
+	mockTransactionService := createMockTransactionService(t)
+	s := wallet.NewService(mockWalletRepository, mockTransactionService, getConf())
+
+	txns, err := s.GetTransactions(context.TODO(), "1", "invalid", wallet.DefaultPageNo, wallet.DefaultPageSize)
+
+	assert.Nil(t, txns)
+	assert.ErrorIs(t, err, wallet.ErrInvalidTransactionType)
+}
+
+func TestServiceGetTransactionsWithInvalidWalletID(t *testing.T) {
+	mockWalletRepository := createMockWalletRepository(t)
+	mockTransactionService := createMockTransactionService(t)
+	s := wallet.NewService(mockWalletRepository, mockTransactionService, getConf())
+
+	mockWalletRepository.EXPECT().Read(context.TODO(), "1").Return(nil, wallet.ErrWalletNotFound)
+
+	txns, err := s.GetTransactions(context.TODO(), "1", "", wallet.DefaultPageNo, wallet.DefaultPageSize)
+
+	assert.Nil(t, txns)
+	assert.ErrorIs(t, err, wallet.ErrWalletNotFound)
+}
