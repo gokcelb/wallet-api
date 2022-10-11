@@ -10,6 +10,7 @@ const defaultEnv = "dev"
 
 type Conf struct {
 	Mongo       MongoConf       `json:"mongo"`
+	JWT         JWTConf         `json:"jwt"`
 	Wallet      WalletConf      `json:"wallet"`
 	Transaction TransactionConf `json:"transaction"`
 }
@@ -23,6 +24,12 @@ type MongoConf struct {
 type CollectionConf struct {
 	Wallet      string `json:"wallet"`
 	Transaction string `json:"transaction"`
+}
+
+type JWTConf struct {
+	ValidityDurationInMin int    `json:"validityDurationInMin"`
+	Issuer                string `json:"issuer"`
+	Secret                string `json:"secret"`
 }
 
 type WalletConf struct {

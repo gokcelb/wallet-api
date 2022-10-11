@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/gokcelb/wallet-api/config"
+	"github.com/gokcelb/wallet-api/internal/auth"
 	"github.com/gokcelb/wallet-api/internal/transaction"
 	transactionMongo "github.com/gokcelb/wallet-api/internal/transaction/mongo"
 	"github.com/gokcelb/wallet-api/internal/wallet"
 	walletMongo "github.com/gokcelb/wallet-api/internal/wallet/mongo"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +27,13 @@ func main() {
 		panic(err)
 	}
 
+	tokenService := auth.NewTokenService(conf.JWT)
+
 	e := echo.New()
+	e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
+		ParseTokenFunc: tokenService.Decode,
+	}))
+
 	ctx := context.Background()
 	mongoClient := connectToMongo(ctx, conf)
 	defer disconnectFromMongo(ctx, mongoClient)

@@ -7,6 +7,11 @@
           "transaction": "transactions"
         }
     },
+    "jwt": {
+        "validityDurationInMin": 15,
+        "issuer": "wallet-api",
+        "secret": "secret"
+    },
     "wallet": {
         "initialBalance": 0,
         "maxBalance": 10000,
